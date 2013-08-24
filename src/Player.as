@@ -56,7 +56,7 @@ package
 		override public function update():void
 		{
 			super.update();
-			if (FlxG.keys["SHIFT"]) speedMultiplier = 1.5;
+			if (FlxG.keys["SHIFT"]) speedMultiplier = 0.2;
 			else speedMultiplier = 1;
 			
 			//velocity.x = velocity.y = 0;

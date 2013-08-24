@@ -24,6 +24,10 @@ package
 		
 		public var wallTextures:FlxSprite;
 		public var floorTextures:FlxSprite;
+		public var widthInWallTextures:uint = 32;
+		public var heightInWallTextures:uint = 8;
+		public var widthInFloorTextures:uint = 2;
+		public var heightInFloorTextures:uint = 8;
 		public var texFloorWidth:Number = 128;
 		public var texFloorHeight:Number = 128;
 		public var texWallWidth:Number = 128;
@@ -51,17 +55,34 @@ package
 			lightmap = new Array(totalTiles);
 			lights = new Array(totalTiles);
 			setAmbientLighting(2);
-			for (var x:uint = 0; x < widthInTiles; x++)
+			var _tileIndex:int;
+			for (var _x:uint = 0; _x < widthInTiles; _x++)
 			{
-				for (var y:uint = 0; y < heightInTiles; y++)
+				for (var _y:uint = 0; _y < heightInTiles; _y++)
 				{
-					
+					_tileIndex = getTile(_x, _y) - 1;
+					if (_tileIndex >= 4)
+					{
+						var _faceIndex:uint = _tileIndex - 4 * int(0.25 * _tileIndex);
+						_tileIndex -= _faceIndex;
+						switch (_faceIndex)
+						{
+							case 0:
+								if (_y > 0) setPointLightAt(_x, _y, NORTH); break;
+							case 1:
+								if (_x < widthInTiles) setPointLightAt(_x, _y, EAST); break;
+							case 2:
+								if (_y < heightInTiles) setPointLightAt(_x, _y, SOUTH); break;
+							case 3:
+								if (_x > 0) setPointLightAt(_x, _y, WEST); break;
+						}
+					}
 				}
 			}
-			setLightingAt(1, 1, 8);
-			setLightingAt(14, 14, 8);
-			setLightingAt(1, 14, 8);
-			setLightingAt(14, 1, 8);
+			/*setLightingAt(1, 1, 3);
+			setLightingAt(14, 14, 3);
+			setLightingAt(1, 14, 3);
+			setLightingAt(14, 1, 3);*/
 			
 			floorTextures = new FlxSprite();
 			floorTextures.loadGraphic(imgFloors);
@@ -91,30 +112,75 @@ package
 			super.draw();
 		}
 		
-		public function setLightingAt(PosX:uint, PosY:uint, LightLevel:uint = 8):void
+		public function setPointLightAt(PosX:uint, PosY:uint, Facing:uint):void
 		{
-			lights[PosX + PosY * widthInTiles] = LightLevel;
-			
-			var _span:int = LightLevel - 1;
-			var _xx:int;
-			var _yy:int;
+			var _x:int;
+			var _y:int;
 			var _light:int;
-			for (var _x:int = -_span; _x <= _span; _x++)
+			switch (Facing)
 			{
-				for (var _y:int = -_span; _y <= _span; _y++)
-				{
-					_xx = PosX + _x;
-					_yy = PosY + _y;
-					if (_xx >= 0 && _xx < widthInTiles && _yy >= 0 && _yy < heightInTiles)
+				case NORTH:
+					for (_x = PosX - 3; _x <= PosX + 3; _x++)
 					{
-						_light = LightLevel - Math.max(Math.abs(_x), Math.abs(_y));
-						if (lightmap[_xx + _yy * widthInTiles] < _light) 
+						for (_y = PosY - 4; _y <= PosY; _y++)
 						{
-							lightmap[_xx + _yy * widthInTiles] = _light;
+							if (_x == PosX - 3 || _x == PosX + 3 || _y == PosY - 4) _light = 3;
+							else if (_x == PosX - 2 || _x == PosX + 2 || _y == PosY - 3) _light = 4;
+							else if (_x == PosX - 1 || _x == PosX + 1 || _y == PosY - 2) _light = 5;
+							else if (_y == PosY - 1) _light = 7;
+							else _light = 4;
+							
+							if (_x >= 0 && _x < widthInTiles && _y >= 0 && _y < heightInTiles)
+								if (lightmap[_x + _y * widthInTiles] < _light) lightmap[_x + _y * widthInTiles] = _light;
 						}
-					}
-				}
+					} break;
+				case SOUTH:
+					for (_x = PosX - 3; _x <= PosX + 3; _x++)
+					{
+						for (_y = PosY; _y <= PosY + 4; _y++)
+						{
+							if (_x == PosX - 3 || _x == PosX + 3 || _y == PosY + 4) _light = 3;
+							else if (_x == PosX - 2 || _x == PosX + 2 || _y == PosY + 3) _light = 4;
+							else if (_x == PosX - 1 || _x == PosX + 1 || _y == PosY + 2) _light = 5;
+							else if (_y == PosY + 1) _light = 7;
+							else _light = 4;
+							
+							if (_x >= 0 && _x < widthInTiles && _y >= 0 && _y < heightInTiles)
+								if (lightmap[_x + _y * widthInTiles] < _light) lightmap[_x + _y * widthInTiles] = _light;
+						}
+					} break;
+				case EAST:
+					for (_x = PosX; _x <= PosX + 4; _x++)
+					{
+						for (_y = PosY - 3; _y <= PosY + 3; _y++)
+						{
+							if (_y == PosY - 3 || _y == PosY + 3 || _x == PosX + 4) _light = 3;
+							else if (_y == PosY - 2 || _y == PosY + 2 || _x == PosX + 3) _light = 4;
+							else if (_y == PosY - 1 || _y == PosY + 1 || _x == PosX + 2) _light = 5;
+							else if (_x == PosX + 1) _light = 7;
+							else _light = 4;
+							
+							if (_x >= 0 && _x < widthInTiles && _y >= 0 && _y < heightInTiles)
+								if (lightmap[_x + _y * widthInTiles] < _light) lightmap[_x + _y * widthInTiles] = _light;
+						}
+					} break;
+				case WEST:
+					for (_x = PosX - 4; _x <= PosX; _x++)
+					{
+						for (_y = PosY - 3; _y <= PosY + 3; _y++)
+						{
+							if (_y == PosY - 3 || _y == PosY + 3 || _x == PosX - 4) _light = 3;
+							else if (_y == PosY - 2 || _y == PosY + 2 || _x == PosX - 3) _light = 4;
+							else if (_y == PosY - 1 || _y == PosY + 1 || _x == PosX - 2) _light = 5;
+							else if (_x == PosX - 1) _light = 7;
+							else _light = 4;
+							
+							if (_x >= 0 && _x < widthInTiles && _y >= 0 && _y < heightInTiles)
+								if (lightmap[_x + _y * widthInTiles] < _light) lightmap[_x + _y * widthInTiles] = _light;
+						}
+					} break;
 			}
+			//lights[PosX + PosY * widthInTiles] = 8;
 		}
 		
 		public function setAmbientLighting(LightLevel:uint = 1):void
