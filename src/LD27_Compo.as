@@ -7,7 +7,7 @@ package
 	{
 		public function LD27_Compo()
 		{
-			super(640, 480, MenuScreen, 1.0, 60, 60, true);
+			super(640, 480, GameScreen, 1.0, 60, 60, true);
 			forceDebugger = true;
 		}
 	}

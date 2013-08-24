@@ -31,6 +31,21 @@ package
 			FlxG.fade(0xff000000, 0.5, goToMenu);
 		}
 		
+		public function goToGame():void
+		{
+			FlxG.switchState(new GameScreen);
+		}
+		
+		public function onButtonGame():void
+		{
+			fadeToGame();
+		}
+		
+		public function fadeToGame(Timer:FlxTimer = null):void
+		{
+			FlxG.fade(0xff000000, 0.5, goToGame);
+		}
+		
 		public function goToMenu():void
 		{
 			FlxG.switchState(new MenuScreen);
