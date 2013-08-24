@@ -9,7 +9,7 @@ package
 	
 	public class Arcade extends FlxTilemap
 	{
-		public static const LIGHT_LEVELS:uint = 10;
+		public static const LIGHT_LEVELS:uint = 8;
 		
 		public static const FLOOR:uint = 0;
 		public static const NORTH:uint = 1;
@@ -18,15 +18,19 @@ package
 		public static const WEST:uint = 4;
 		public static const CEILING:uint = 5;
 		
-		[Embed(source="../assets/images/Textures.png")] protected static var imgTextures:Class;
+		[Embed(source="../assets/images/FloorTextures.png")] protected static var imgFloors:Class;
+		[Embed(source="../assets/images/WallTextures.png")] protected static var imgWalls:Class;
 		[Embed(source="../assets/maps/levelOne.csv", mimeType = "application/octet-stream")] protected var mapLevel1:Class;
 		
-		public var textures:FlxSprite;
-		public var texWidth:Number = 128;
-		public var texHeight:Number = 128;
+		public var wallTextures:FlxSprite;
+		public var floorTextures:FlxSprite;
+		public var texFloorWidth:Number = 128;
+		public var texFloorHeight:Number = 128;
+		public var texWallWidth:Number = 128;
 		public var texWallHeight:Number = 256;
-		public var uvWidth:Number;
-		public var uvHeight:Number;
+		public var uvFloorWidth:Number;
+		public var uvFloorHeight:Number;
+		public var uvWallWidth:Number;
 		public var uvWallHeight:Number;
 		
 		public var mapWidth:uint = 16;
@@ -42,23 +46,33 @@ package
 		{
 			super();
 			
-			loadMap(new mapLevel1, imgTextures, texWidth, texHeight, FlxTilemap.OFF, 0, 1, 1);
+			loadMap(new mapLevel1, imgWalls, texFloorWidth, texFloorHeight, FlxTilemap.OFF, 0, 1, 1);
 			
 			lightmap = new Array(totalTiles);
 			lights = new Array(totalTiles);
-			setAmbientLighting(10);
-			/*setLightingAt(3, 2, 10);
-			setLightingAt(3, 20, 10);
-			setLightingAt(3, 38, 10);
-			setLightingAt(21, 2, 10);
-			setLightingAt(21, 20, 10);
-			setLightingAt(21, 38, 10);*/
+			setAmbientLighting(2);
+			for (var x:uint = 0; x < widthInTiles; x++)
+			{
+				for (var y:uint = 0; y < heightInTiles; y++)
+				{
+					
+				}
+			}
+			setLightingAt(1, 1, 8);
+			setLightingAt(14, 14, 8);
+			setLightingAt(1, 14, 8);
+			setLightingAt(14, 1, 8);
 			
-			textures = new FlxSprite();
-			textures.loadGraphic(imgTextures);
-			uvWidth = texWidth / textures.width;
-			uvHeight = texHeight / textures.height;
-			uvWallHeight = texWallHeight / textures.height;
+			floorTextures = new FlxSprite();
+			floorTextures.loadGraphic(imgFloors);
+			uvFloorWidth = texFloorWidth / floorTextures.width;
+			uvFloorHeight = texFloorHeight / floorTextures.height;
+			
+			wallTextures = new FlxSprite();
+			wallTextures.loadGraphic(imgWalls);
+			uvWallWidth = texWallWidth / wallTextures.width;
+			uvWallHeight = texWallHeight / wallTextures.height;
+			
 			FlxG.worldBounds.make(0, 0, width, height);
 			vismap = new Dictionary();
 			orderTree = new Dictionary();
@@ -77,7 +91,7 @@ package
 			super.draw();
 		}
 		
-		public function setLightingAt(PosX:uint, PosY:uint, LightLevel:uint = 10):void
+		public function setLightingAt(PosX:uint, PosY:uint, LightLevel:uint = 8):void
 		{
 			lights[PosX + PosY * widthInTiles] = LightLevel;
 			

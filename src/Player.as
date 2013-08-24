@@ -21,7 +21,7 @@ package
 		public var moveSpeed:Number = 5.0 * 128; //the constant value is in tiles/second
 		public var rotSpeed:Number = 3.0; //the constant value is in radians/second
 		public var speedMultiplier:Number = 1.0;
-		protected var _fov:Number = 66 * (Math.PI / 180);
+		protected var _fov:Number;
 		
 		public var magDir:Number = 0;
 		public var magView:Number = 0;
@@ -37,12 +37,13 @@ package
 
 			x = X * 128 - width / 2;
 			y = Y * 128 - height / 2;
+			velocity.x = moveSpeed;
+			drag.x = drag.y = 8 * moveSpeed;
 			
-			_dir = new FlxPoint(2, 0); // initial direction vector
+			_dir = new FlxPoint(1, 0); // initial direction vector
 			magDir = Math.sqrt(_dir.x * _dir.x + _dir.y * _dir.y);
 			_view = new FlxPoint(0, 1); //the 2d raycaster version of camera plane
-			angView = fov / 2;
-			magView = Math.sin(angView) * (magDir / Math.cos(angView));
+			fov = 66 * (Math.PI / 180);
 			_pos = new FlxPoint();
 			_rayDir = new FlxPoint();
 		}
@@ -55,10 +56,10 @@ package
 		override public function update():void
 		{
 			super.update();
-			if (FlxG.keys["SHIFT"]) speedMultiplier = 0.25;
+			if (FlxG.keys["SHIFT"]) speedMultiplier = 1.5;
 			else speedMultiplier = 1;
 			
-			velocity.x = velocity.y = 0;
+			//velocity.x = velocity.y = 0;
 			
 			if (FlxG.keys["W"])
 			{ //move forward
@@ -81,6 +82,13 @@ package
 			{ //strafe right
 				velocity.x += view.x * moveSpeed * speedMultiplier;
 				velocity.y += view.y * moveSpeed * speedMultiplier;
+			}
+			
+			var _speedThrottle:Number = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) / moveSpeed / speedMultiplier;
+			if (_speedThrottle > 1) 
+			{
+				velocity.x /= _speedThrottle;
+				velocity.y /= _speedThrottle;
 			}
 			
 			if (angle < 0) angle += 360;

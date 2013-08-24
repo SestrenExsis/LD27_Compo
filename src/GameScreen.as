@@ -1,13 +1,14 @@
 package
 {
-	import org.flixel.*;
-	import flash.geom.Rectangle;
 	import flash.display.Sprite;
+	import flash.geom.Rectangle;
 	import flash.utils.Dictionary;
+	import flash.display.BitmapData;
+	
+	import org.flixel.*;
 	
 	public class GameScreen extends ScreenState
 	{
-		[Embed(source="../assets/images/Textures.png")] protected static var imgTextures:Class;
 		
 		//Person --> Player and Stranger
 		//Coin --> Quarter and Token
@@ -15,6 +16,8 @@ package
 		//Obstacle --> ???
 		//Carpet = Faster Jump
 		//Tile = Faster Slide
+		
+		private var worldScale:FlxPoint;
 		
 		public static var viewport:FlxSprite;
 		
@@ -28,6 +31,7 @@ package
 		private var debugState:uint = 0;
 		
 		private var player:Player;
+		private var playerPOV:PlayerPOV;
 		private var arcade:Arcade;
 		
 		//for drawing triangles
@@ -74,6 +78,8 @@ package
 		{
 			super.create();
 			
+			worldScale = new FlxPoint(0.5, 1);
+			
 			viewport = new FlxSprite(0, 0);
 			viewport.scrollFactor.make(0, 0);
 			viewport.makeGraphic(FlxG.width, FlxG.height, 0xffff0000);
@@ -96,13 +102,13 @@ package
 			_pt = new FlxPoint();
 			_intersect = new FlxPoint();
 			
-			player = new Player();
-			
+			player = new Player(2, 2);
 			FlxG.camera.follow(player);
+			playerPOV = new PlayerPOV(player);
 			
 			arcade = new Arcade(canvas, player);
-			sourceRect = new Rectangle(0, 0, arcade.uvWidth, arcade.uvHeight);
-			floorSourceRect = new Rectangle(0, 0, arcade.uvWidth, arcade.uvHeight);
+			sourceRect = new Rectangle(0, 0, arcade.uvWallWidth, arcade.uvWallHeight);
+			floorSourceRect = new Rectangle(0, 0, arcade.uvFloorWidth, arcade.uvFloorHeight);
 			destRect = new Rectangle(0, 0, 1, 0);
 			ceilingRect = new Rectangle(0, 0, FlxG.width, FlxG.height / 2);
 			floorRect = new Rectangle(0, FlxG.height / 2, FlxG.width, FlxG.height / 2);
@@ -110,6 +116,7 @@ package
 			add(viewport);
 			add(arcade);
 			add(player);
+			add(playerPOV);
 			
 			zBuffer = new Array(viewport.width);
 			maxRenderDistance = 30;
@@ -205,12 +212,12 @@ package
 			var _distX:Number;
 			var _distY:Number;
 			
-			playerPosX = player.pos.x / arcade.texWidth;
-			playerPosY = player.pos.y / arcade.texHeight;
+			playerPosX = player.pos.x / arcade.texFloorWidth;
+			playerPosY = player.pos.y / arcade.texFloorHeight;
 			
 			for (var x:uint = 0; x < SearchResolution; x += 1)
 			{
-				cameraX = 2 * (x / SearchResolution) - 1;
+				cameraX = (2 * (x / SearchResolution) - 1) / worldScale.x;
 				
 				player.setRayDir(cameraX);
 				
@@ -262,7 +269,7 @@ package
 					_distX = playerPosX - tileX;
 					_distY = playerPosY - tileY;
 					_renderDistance = Math.sqrt(_distX * _distX + _distY * _distY);
-				} while (passedThroughTile(tileX, tileY) < 20)// && _renderDistance < maxRenderDistance); //Check if ray has hit a wall
+				} while (passedThroughTile(tileX, tileY) == 0)// && _renderDistance < maxRenderDistance); //Check if ray has hit a wall
 				
 				//if (_renderDistance <= maxRenderDistance)
 				{
@@ -299,10 +306,10 @@ package
 			var _face:uint = 0;
 			negative = 1;
 			
-			if (_tile < 20) //floor tile
+			if (_tile == 0) //floor tile
 			{
-				var _tileX:int = (player.pos.x / arcade.texWidth);
-				var _tileY:int = (player.pos.y / arcade.texHeight);
+				var _tileX:int = (player.pos.x / arcade.texFloorWidth);
+				var _tileY:int = (player.pos.y / arcade.texFloorHeight);
 				_face = Arcade.FLOOR;
 				if (arcade.vismap[_index] != _face) renderFloor(TileX, TileY, TileX + 1, TileY + 1, 2);
 			}
@@ -327,13 +334,12 @@ package
 		
 		private function renderFloor(StartTileX:Number, StartTileY:Number, EndTileX:Number, EndTileY:Number, IterationsLeft:uint = 2):void
 		{
-			var _pX:Number = player.pos.x / arcade.texWidth;
-			var _pY:Number = player.pos.y / arcade.texHeight;
+			var _pX:Number = player.pos.x / arcade.texFloorWidth;
+			var _pY:Number = player.pos.y / arcade.texFloorHeight;
 			var _tX:Number = 0.5 * (StartTileX + EndTileX);
 			var _tY:Number = 0.5 * (StartTileY + EndTileY);
 			
 			var _tileDistance:Number = Math.sqrt((_pX - _tX) * (_pX - _tX) + (_pY - _tY) * (_pY - _tY));
-			
 			var _badPt0:Boolean = false;
 			var _badPt1:Boolean = false;
 			var _badPt2:Boolean = false;
@@ -345,8 +351,8 @@ package
 			var _offScreenCount:uint = 0;
 			
 			//distance to upper-left corner of tile
-			_pt.x = StartTileX * arcade.texWidth;
-			_pt.y = StartTileY * arcade.texHeight;
+			_pt.x = StartTileX * arcade.texFloorWidth;
+			_pt.y = StartTileY * arcade.texFloorHeight;
 			_ptDistance = projectPointToScreen(_pt.x, _pt.y, 0, floorPt0)
 			if (_ptDistance == -1) _badPt0 = _badPointExists = true;
 			else if (_ptDistance < _minDistance)
@@ -356,7 +362,7 @@ package
 			}
 			
 			//distance to upper-right corner of tile
-			_pt.x = EndTileX * arcade.texWidth;
+			_pt.x = EndTileX * arcade.texFloorWidth;
 			_ptDistance = projectPointToScreen(_pt.x, _pt.y, 0, floorPt1)
 			if (_ptDistance == -1) _badPt1 = _badPointExists = true;
 			else if (_ptDistance < _minDistance)
@@ -366,7 +372,7 @@ package
 			}
 			
 			//distance to lower-right corner of tile
-			_pt.y = EndTileY * arcade.texHeight;
+			_pt.y = EndTileY * arcade.texFloorHeight;
 			_ptDistance = projectPointToScreen(_pt.x, _pt.y, 0, floorPt3)
 			if (_ptDistance == -1) _badPt3 = _badPointExists = true;
 			else if (_ptDistance < _minDistance)
@@ -376,7 +382,7 @@ package
 			}
 			
 			//distance to lower-left corner of tile
-			_pt.x = StartTileX * arcade.texWidth;
+			_pt.x = StartTileX * arcade.texFloorWidth;
 			_ptDistance = projectPointToScreen(_pt.x, _pt.y, 0, floorPt2)
 			if (_ptDistance == -1) _badPt2 = _badPointExists = true;
 			else if (_ptDistance < _minDistance)
@@ -407,34 +413,34 @@ package
 			}
 			else
 			{
-				var _light:int = 10 - arcade.lightmap[int(StartTileX) + int(StartTileY) * arcade.widthInTiles];
-				//if (_tileDistance >= 8) _light += int(0.5 * (_tileDistance - 6));
-				if (_light >= 10) return;//_light = 5;
-				var _startTexX:Number = arcade.uvWidth * (StartTileX - int(StartTileX));
-				var _startTexY:Number = arcade.uvHeight * (StartTileY - int(StartTileY));
-				var _endTexX:Number = arcade.uvWidth * (EndTileX - int(StartTileX));
-				var _endTexY:Number = arcade.uvHeight * (EndTileY - int(StartTileY));
-				floorSourceRect.x = 0 * arcade.uvWidth + _startTexX;
-				floorSourceRect.y = 0 * arcade.uvHeight + _startTexY;
-				floorSourceRect.width = 0 * arcade.uvWidth + _endTexX;
-				floorSourceRect.height = 0 * arcade.uvHeight + _endTexY;
-				drawPlaneToCanvas(floorPt0, floorPt1, floorPt2, floorPt3, floorSourceRect);
+				var _light:int = Arcade.LIGHT_LEVELS - arcade.lightmap[int(StartTileX) + int(StartTileY) * arcade.widthInTiles];
+				if (_tileDistance >= 8) _light += int(0.25 * (_tileDistance - 4));
+				if (_light >= Arcade.LIGHT_LEVELS) return;//_light = 5;
+				var _startTexX:Number = arcade.uvFloorWidth * (StartTileX - int(StartTileX));
+				var _startTexY:Number = arcade.uvFloorHeight * (StartTileY - int(StartTileY));
+				var _endTexX:Number = arcade.uvFloorWidth * (EndTileX - int(StartTileX));
+				var _endTexY:Number = arcade.uvFloorHeight * (EndTileY - int(StartTileY));
+				floorSourceRect.x = 0 * arcade.uvFloorWidth + _startTexX;
+				floorSourceRect.y = _light * arcade.uvFloorHeight + _startTexY;
+				floorSourceRect.width = 0 * arcade.uvFloorWidth + _endTexX;
+				floorSourceRect.height = _light * arcade.uvFloorHeight + _endTexY;
+				drawPlaneToCanvas(floorPt0, floorPt1, floorPt2, floorPt3, floorSourceRect, arcade.floorTextures.pixels);
 				
 				floorPt0.y = viewport.height - floorPt0.y;
 				floorPt1.y = viewport.height - floorPt1.y;
 				floorPt2.y = viewport.height - floorPt2.y;
 				floorPt3.y = viewport.height - floorPt3.y;
 				
-				floorSourceRect.y = 1 * arcade.uvWidth + _startTexX;
-				floorSourceRect.height = 1 * arcade.uvWidth + _endTexX;
-				drawPlaneToCanvas(floorPt0, floorPt1, floorPt2, floorPt3, floorSourceRect);
+				floorSourceRect.x = 1 * arcade.uvFloorWidth + _startTexX;
+				floorSourceRect.width = 1 * arcade.uvFloorWidth + _endTexX;
+				drawPlaneToCanvas(floorPt0, floorPt1, floorPt2, floorPt3, floorSourceRect, arcade.floorTextures.pixels);
 			}
 		}
 		
 		private function renderWall(TileX:uint, TileY:uint, Face:uint):void
 		{
-			var _pX:Number = player.pos.x / arcade.texWidth;
-			var _pY:Number = player.pos.y / arcade.texHeight;
+			var _pX:Number = player.pos.x / arcade.texFloorWidth;
+			var _pY:Number = player.pos.y / arcade.texFloorHeight;
 			var _tX:Number = TileX + 0.5;
 			var _tY:Number = TileY + 0.5;
 			var _tileDistance:Number = Math.sqrt((_pX - _tX) * (_pX - _tX) + (_pY - _tY) * (_pY - _tY));
@@ -442,52 +448,61 @@ package
 			var _index:uint = TileX + TileY * arcade.widthInTiles;
 			var _light:int;
 			//Use the lighting of the square that is adjacent to this particular wall face
-			if (Face == Arcade.WEST) _light = 2;//_light = 10 - arcade.lightmap[_index - 1];
-			else if (Face == Arcade.EAST) _light = 2;//_light = 10 - arcade.lightmap[_index + 1];
-			else if (Face == Arcade.NORTH) _light = 1;//_light = 10 - arcade.lightmap[_index - arcade.widthInTiles];
-			else if (Face == Arcade.SOUTH) _light = 3;//_light = 10 - arcade.lightmap[_index + arcade.widthInTiles];
-			//if (_tileDistance >= 8) _light += int(0.5 * (_tileDistance - 6));
-			//if (_light >= 10) return;//_light = 5;
-			var _tileIndex:uint = arcade.getTile(TileX, TileY);
+			if (Face == Arcade.WEST) _light = Arcade.LIGHT_LEVELS - arcade.lightmap[_index - 1];
+			else if (Face == Arcade.EAST) _light = Arcade.LIGHT_LEVELS - arcade.lightmap[_index + 1];
+			else if (Face == Arcade.NORTH) _light = Arcade.LIGHT_LEVELS - arcade.lightmap[_index - arcade.widthInTiles];
+			else if (Face == Arcade.SOUTH) _light = Arcade.LIGHT_LEVELS - arcade.lightmap[_index + arcade.widthInTiles];
+			if (_tileDistance >= 8) _light += int(0.25 * (_tileDistance - 4));
+			if (_light >= Arcade.LIGHT_LEVELS) return;
+			var _tileIndex:uint = arcade.getTile(TileX, TileY) - 1;
 			
 			//move downward on the texture file based on how dark it needs to be.
-			sourceRect.x = arcade.uvWidth * int(_tileIndex % 10);
+			sourceRect.x = arcade.uvWallWidth * int(_tileIndex % 10);
 			sourceRect.y = arcade.uvWallHeight * _light;
-			sourceRect.width = sourceRect.x + arcade.uvWidth;
+			sourceRect.width = sourceRect.x + arcade.uvWallWidth;
 			sourceRect.height = sourceRect.y + arcade.uvWallHeight;
 			
 			var _ptDistance:Number = 0;
 			//distance to upper-left corner of face
-			_pt.x = TileX * arcade.texWidth;
-			_pt.y = TileY * arcade.texHeight;
-			if (Face == Arcade.EAST || Face == Arcade.SOUTH) _pt.x += arcade.texWidth;
-			if (Face == Arcade.WEST || Face == Arcade.SOUTH) _pt.y += arcade.texHeight;
-			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt1)
+			_pt.x = TileX * arcade.texFloorWidth;
+			_pt.y = TileY * arcade.texFloorHeight;
+			if (Face == Arcade.EAST || Face == Arcade.SOUTH) _pt.x += arcade.texFloorWidth;
+			if (Face == Arcade.WEST || Face == Arcade.SOUTH) _pt.y += arcade.texFloorHeight;
+			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1)
 			if (_ptDistance == -1)
 			{
-				sourceRect.width -= 0.25 * arcade.uvWidth;
-				if (Face == Arcade.NORTH) _pt.x += 0.25 * arcade.texWidth;
-				else if (Face == Arcade.EAST) _pt.y += 0.25 * arcade.texHeight;
-				else if (Face == Arcade.SOUTH) _pt.x -= 0.25 * arcade.texWidth;
-				else if (Face == Arcade.WEST) _pt.y -= 0.25 * arcade.texHeight;
-				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt1);
+				sourceRect.width -= 0.2 * arcade.uvWallWidth;
+				if (Face == Arcade.NORTH) _pt.x += 0.2 * arcade.texFloorWidth;
+				else if (Face == Arcade.EAST) _pt.y += 0.2 * arcade.texFloorHeight;
+				else if (Face == Arcade.SOUTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+				else if (Face == Arcade.WEST) _pt.y -= 0.2 * arcade.texFloorHeight;
+				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
 				if (_ptDistance == -1)
 				{	// If the distance is negative, then the point is behind the player, and will not render properly. So, we need to cut
 					//part of the wall off and try again
-					sourceRect.width -= 0.25 * arcade.uvWidth;
-					if (Face == Arcade.NORTH) _pt.x += 0.25 * arcade.texWidth;
-					else if (Face == Arcade.EAST) _pt.y += 0.25 * arcade.texHeight;
-					else if (Face == Arcade.SOUTH) _pt.x -= 0.25 * arcade.texWidth;
-					else if (Face == Arcade.WEST) _pt.y -= 0.25 * arcade.texHeight;
-					_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt1);
+					sourceRect.width -= 0.2 * arcade.uvWallWidth;
+					if (Face == Arcade.NORTH) _pt.x += 0.2 * arcade.texFloorWidth;
+					else if (Face == Arcade.EAST) _pt.y += 0.2 * arcade.texFloorHeight;
+					else if (Face == Arcade.SOUTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+					else if (Face == Arcade.WEST) _pt.y -= 0.2 * arcade.texFloorHeight;
+					_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
 					if (_ptDistance == -1)
 					{
-						sourceRect.width -= 0.25 * arcade.uvWidth;
-						if (Face == Arcade.NORTH) _pt.x += 0.25 * arcade.texWidth;
-						else if (Face == Arcade.EAST) _pt.y += 0.25 * arcade.texHeight;
-						else if (Face == Arcade.SOUTH) _pt.x -= 0.25 * arcade.texWidth;
-						else if (Face == Arcade.WEST) _pt.y -= 0.25 * arcade.texHeight;
-						_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt1);
+						sourceRect.width -= 0.2 * arcade.uvWallWidth;
+						if (Face == Arcade.NORTH) _pt.x += 0.2 * arcade.texFloorWidth;
+						else if (Face == Arcade.EAST) _pt.y += 0.2 * arcade.texFloorHeight;
+						else if (Face == Arcade.SOUTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+						else if (Face == Arcade.WEST) _pt.y -= 0.2 * arcade.texFloorHeight;
+						_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+						if (_ptDistance == -1)
+						{
+							sourceRect.width -= 0.2 * arcade.uvWallWidth;
+							if (Face == Arcade.NORTH) _pt.x += 0.2 * arcade.texFloorWidth;
+							else if (Face == Arcade.EAST) _pt.y += 0.2 * arcade.texFloorHeight;
+							else if (Face == Arcade.SOUTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+							else if (Face == Arcade.WEST) _pt.y -= 0.2 * arcade.texFloorHeight;
+							_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+						}
 					}
 				}
 			}
@@ -498,37 +513,46 @@ package
 			pt3.y = viewport.height - pt1.y;
 			
 			//distance to upper-right corner of face
-			_pt.x = TileX * arcade.texWidth;
-			_pt.y = TileY * arcade.texHeight;
-			if (Face == Arcade.NORTH || Face == Arcade.EAST) _pt.x += arcade.texWidth;
-			if (Face == Arcade.EAST || Face == Arcade.SOUTH) _pt.y += arcade.texHeight;
-			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt0);
+			_pt.x = TileX * arcade.texFloorWidth;
+			_pt.y = TileY * arcade.texFloorHeight;
+			if (Face == Arcade.NORTH || Face == Arcade.EAST) _pt.x += arcade.texFloorWidth;
+			if (Face == Arcade.EAST || Face == Arcade.SOUTH) _pt.y += arcade.texFloorHeight;
+			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 			
 			if (_ptDistance == -1)
 			{	// If the distance is negative, then the point is behind the player, and will not render properly. So, we need to cut
 				//part of the wall off and try again
-				sourceRect.x += 0.25 * arcade.uvWidth;
-				if (Face == Arcade.NORTH) _pt.x -= 0.25 * arcade.texWidth;
-				else if (Face == Arcade.EAST) _pt.y -= 0.25 * arcade.texHeight;
-				else if (Face == Arcade.SOUTH) _pt.x += 0.25 * arcade.texWidth;
-				else if (Face == Arcade.WEST) _pt.y += 0.25 * arcade.texHeight;
-				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt0);
+				sourceRect.x += 0.2 * arcade.uvWallWidth;
+				if (Face == Arcade.NORTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+				else if (Face == Arcade.EAST) _pt.y -= 0.2 * arcade.texFloorHeight;
+				else if (Face == Arcade.SOUTH) _pt.x += 0.2 * arcade.texFloorWidth;
+				else if (Face == Arcade.WEST) _pt.y += 0.2 * arcade.texFloorHeight;
+				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 				if (_ptDistance == -1)
 				{
-					sourceRect.x += 0.25 * arcade.uvWidth;
-					if (Face == Arcade.NORTH) _pt.x -= 0.25 * arcade.texWidth;
-					else if (Face == Arcade.EAST) _pt.y -= 0.25 * arcade.texHeight;
-					else if (Face == Arcade.SOUTH) _pt.x += 0.25 * arcade.texWidth;
-					else if (Face == Arcade.WEST) _pt.y += 0.25 * arcade.texHeight;
-					_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt0);
+					sourceRect.x += 0.2 * arcade.uvWallWidth;
+					if (Face == Arcade.NORTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+					else if (Face == Arcade.EAST) _pt.y -= 0.2 * arcade.texFloorHeight;
+					else if (Face == Arcade.SOUTH) _pt.x += 0.2 * arcade.texFloorWidth;
+					else if (Face == Arcade.WEST) _pt.y += 0.2 * arcade.texFloorHeight;
+					_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 					if (_ptDistance == -1)
 					{
-						sourceRect.x += 0.25 * arcade.uvWidth;
-						if (Face == Arcade.NORTH) _pt.x -= 0.25 * arcade.texWidth;
-						else if (Face == Arcade.EAST) _pt.y -= 0.25 * arcade.texHeight;
-						else if (Face == Arcade.SOUTH) _pt.x += 0.25 * arcade.texWidth;
-						else if (Face == Arcade.WEST) _pt.y += 0.25 * arcade.texHeight;
-						_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texHeight, pt0);
+						sourceRect.x += 0.2 * arcade.uvWallWidth;
+						if (Face == Arcade.NORTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+						else if (Face == Arcade.EAST) _pt.y -= 0.2 * arcade.texFloorHeight;
+						else if (Face == Arcade.SOUTH) _pt.x += 0.2 * arcade.texFloorWidth;
+						else if (Face == Arcade.WEST) _pt.y += 0.2 * arcade.texFloorHeight;
+						_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
+						if (_ptDistance == -1)
+						{
+							sourceRect.x += 0.2 * arcade.uvWallWidth;
+							if (Face == Arcade.NORTH) _pt.x -= 0.2 * arcade.texFloorWidth;
+							else if (Face == Arcade.EAST) _pt.y -= 0.2 * arcade.texFloorHeight;
+							else if (Face == Arcade.SOUTH) _pt.x += 0.2 * arcade.texFloorWidth;
+							else if (Face == Arcade.WEST) _pt.y += 0.2 * arcade.texFloorHeight;
+							_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
+						}
 					}
 				}
 			}
@@ -538,10 +562,10 @@ package
 			pt2.x = pt0.x;
 			pt2.y = viewport.height - pt0.y;
 			
-			drawPlaneToCanvas(pt0, pt1, pt2, pt3, sourceRect);
+			drawPlaneToCanvas(pt0, pt1, pt2, pt3, sourceRect, arcade.wallTextures.pixels);
 		}
 		
-		public function drawPlaneToCanvas(Point0:FlxPoint, Point1:FlxPoint, Point2:FlxPoint, Point3:FlxPoint, SourceRect:Rectangle):void
+		public function drawPlaneToCanvas(Point0:FlxPoint, Point1:FlxPoint, Point2:FlxPoint, Point3:FlxPoint, SourceRect:Rectangle, Bmp:BitmapData):void
 		{
 			//Many thanks to http://zehfernando.com/2010/the-best-drawplane-distortimage-method-ever/ for this!
 			
@@ -562,7 +586,7 @@ package
 			var f:Number = (ll1 + ll2) / (lr1 + lr2);
 			
 			// Draws the triangle
-			canvas.graphics.beginBitmapFill(arcade.textures.pixels, null, false, false);
+			canvas.graphics.beginBitmapFill(Bmp, null, false, false);
 			canvas.graphics.drawTriangles(
 				Vector.<Number>([Point0.x, Point0.y, Point1.x, Point1.y, Point2.x, Point2.y, Point3.x, Point3.y]),
 				Vector.<int>([0, 1, 2, 1, 3, 2]),
@@ -629,17 +653,17 @@ package
 			
 			if (transformY > 0)
 			{
-				DestinationPoint.x = int((0.5 * viewport.width) * (1 + transformX / transformY));
+				DestinationPoint.x = int((0.5 * viewport.width) * (1 + worldScale.x * (transformX / transformY)));
 				
 				//if we're projecting a singular point that is representing a game sprite, we need to adjust its scale
 				//if (GameEntity) GameEntity.scale.x = GameEntity.scale.y = Math.abs(_height);
 				
 				DestinationPoint.y = 0.5 * viewport.height;
-				DestinationPoint.y -= (SourceZ / arcade.texHeight - 0.5) * arcade.texHeight * _height;
+				DestinationPoint.y -= (SourceZ / arcade.texFloorHeight - 0.5) * arcade.texFloorHeight * _height;
 				
 				//if (SourceZ == 0) DestinationPoint.y += 0.5 * map.texHeight * _height;
 				//else if (SourceZ == map.texHeight) DestinationPoint.y -= 0.5 * map.texHeight * _height;
-				return transformY / arcade.texHeight;
+				return transformY / arcade.texFloorHeight;
 			}
 			else 
 			{
