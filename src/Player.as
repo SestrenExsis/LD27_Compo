@@ -50,11 +50,13 @@ package
 		public var currentItem:uint = 0;
 		public var staleMessage:Boolean = false;
 		public var tokens:uint = 0;
+		public var playingGame:Boolean = false;
+		public var continueTimer:FlxTimer;
 		
 		//public var nextObjective:Entity;
 		public var target:Entity;
 		public var currentObjective:int = 0;
-		public var info:String = "";
+		public var info:String = "Get to the token machine to get the tokens you'll need to play.";
 		
 		public function Player(X:Number = 3.5, Y:Number = 2)
 		{
@@ -77,6 +79,7 @@ package
 			_rayDir = new FlxPoint();
 			timer = new FlxTimer();
 			timer.start(0.001);
+			continueTimer = new FlxTimer();
 			
 			inventory.sort(randomSort);
 			inventory.unshift(ONE_DOLLAR_BILL);
@@ -96,6 +99,9 @@ package
 		override public function update():void
 		{
 			super.update();
+			
+			if (playingGame) return;
+			
 			if (FlxG.keys["SHIFT"]) speedMultiplier = 1.5;
 			else speedMultiplier = 1;
 			
@@ -112,7 +118,6 @@ package
 				velocity.y = dir.y * -moveSpeed * speedMultiplier;
 			}
 			
-			//eventually, will have to calculate this differently to prevent speed increases
 			if (FlxG.keys["Q"])
 			{ //strafe left
 				velocity.x += view.x * -moveSpeed * speedMultiplier;
@@ -254,13 +259,13 @@ package
 			{
 				if (target)
 				{
-					info = "You've already paid for tokens. Get them from the coin deposit slot.";
-					staleMessage = true;
+					info = "You've already paid for tokens. Check the coin deposit slot.";
+					//staleMessage = true;
 				}
 				else if (tokens > 0)
 				{
-					info = "You already have tokens to play with.";
-					staleMessage = true;
+					info = "You already have tokens. Go find the game you want to beat!";
+					//staleMessage = true;
 				}
 				else if (itemFacing == CORRECT && inventory[currentItem] != TEN_DOLLAR_BILL)
 				{
@@ -275,13 +280,13 @@ package
 				{
 					if (inventory[currentItem] == TEN_DOLLAR_BILL)
 					{
-						info = "This machine does not accept ten-dollar bills.";
-						staleMessage = true;
+						info = "This machine does not accept $10 bills. Press 'J' to swap it.";
+						//staleMessage = true;
 					}
 					else if (itemFacing != CORRECT)
 					{
-						info = "The bill is not facing the correct way.";
-						staleMessage = true;
+						info = "The bill is not facing the correct way. Press 'K' to flip it.";
+						//staleMessage = true;
 					}
 				}
 			}
@@ -299,31 +304,76 @@ package
 					else if (!staleMessage)
 					{
 						info = "The coin deposit slot is empty.";
-						staleMessage = true;
+						//staleMessage = true;
 					}
 				}
 				else if (tokens == 0)
 				{
 					info = "You haven't inserted any bills into the machine yet.";
-					staleMessage = true;
+					//staleMessage = true;
 				}
 			}
 			else if (Ent.type == Entity.OBJECTIVE_START_GAME)
 			{
-				if (tokens > 0)
+				if (target)
 				{
-					tokens = 0;
-					//startGame();
-					return true;
+					info = "You forgot your tokens back at the token machine!";
+					//staleMessage = true;
 				}
-				else if (tokens == 0)
+				else
 				{
-					info = "You are out of tokens. Get some more from the nearest token machine.";
-					staleMessage = true;
+					if (Ent.visible)
+					{
+						if (tokens > 0)
+						{
+							tokens = 0;
+							playGame();
+							return true;
+						}
+						else if (timer.finished)
+						{
+							info = "You are out of tokens! Hurry to the nearest token machine!";
+						}
+					}
+					else
+					{
+						info = "This is not the game you feel like playing right now.";
+					}
 				}
+				
 			}
 			
 			return false;
+		}
+		
+		public function playGame():void
+		{
+			playingGame = true;
+			FlxG.fade(0xff000000, 0.75, onTimerPlaying, true);
+		}
+		
+		public function onTimerPlaying():void
+		{
+			//FlxG.
+			FlxG.camera.stopFX();
+			FlxG.flash(0xff000000, 0.75, onTimerDonePlaying, true);
+		}
+		
+		public function onTimerDonePlaying():void
+		{
+			playingGame = false;
+			continueTimer.stop();
+			continueTimer.start(10, 1, onTimerGameOver);
+		}
+		
+		public function onTimerGameOver(Timer:FlxTimer):void
+		{
+			
+		}
+		
+		public function winGame():void
+		{
+			
 		}
 		
 		public function removeItemFromInventory(Index:uint):uint

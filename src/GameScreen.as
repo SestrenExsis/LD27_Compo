@@ -111,6 +111,13 @@ package
 			objectives.add(entity);
 			entity = new Entity(Entity.OBJECTIVE_START_GAME, 2, 21.5);
 			objectives.add(entity);
+			entity = new Entity(Entity.OBJECTIVE_MAKE_CHANGE, 15.5, 20);
+			objectives.add(entity);
+			entity = new Entity(Entity.OBJECTIVE_GET_CHANGE, 14.5, 20);
+			(objectives.members[3] as Entity).target = entity;
+			objectives.add(entity);
+			entity = new Entity(Entity.OBJECTIVE_START_GAME, 9, 7.5);
+			objectives.add(entity);
 			
 			entities = new FlxGroup();
 			
@@ -127,6 +134,7 @@ package
 			add(entities);
 			add(objectives);
 			add(playerPOV);
+			add(overlay);
 			add(information);
 			
 			zBuffer = new Array(viewport.width);
@@ -161,7 +169,6 @@ package
 			{
 				if (player.timer.finished) 
 				{
-					FlxG.log((Object2 as Entity).target);
 					if ((Object2 as Entity).target)
 					{
 						if (player.useItem(Object2 as Entity, (Object2 as Entity).target)

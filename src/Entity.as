@@ -42,7 +42,6 @@ package
 		public var angleToPlayer:Number;
 		public var distanceToPlayer:Number;
 		
-		public var prevObjectiveID:int;
 		public var target:Entity;
 		
 		public var tokens:uint = 0;

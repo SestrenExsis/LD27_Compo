@@ -4,7 +4,10 @@ package
 	
 	public class ScreenState extends FlxState
 	{
+		[Embed(source="../assets/images/Sprites.png")] protected static var imgSprites:Class;
+
 		public var information:FlxText;
+		public var overlay:FlxSprite;
 		
 		public function ScreenState()
 		{
@@ -19,6 +22,15 @@ package
 			information = new FlxText(0, 0, FlxG.width, "blah");
 			information.setFormat(null, 16, 0xff0000, "left");
 			information.scrollFactor.x = information.scrollFactor.y = 0;
+			
+			overlay = new FlxSprite(32, FlxG.height - 160);
+			overlay.scale.x = overlay.scale.y = 1.5;
+			overlay.scrollFactor.x = overlay.scrollFactor.y = 0;
+			overlay.alpha = 0.35;
+			overlay.loadGraphic(imgSprites, true, false, 128, 128);
+			overlay.addAnimation("idle",[0]);
+			overlay.addAnimation("countdown", [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 20], 1, false);
+			overlay.play("countdown");
 		}
 		
 		override public function update():void
