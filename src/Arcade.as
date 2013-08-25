@@ -26,8 +26,8 @@ package
 		public var floorTextures:FlxSprite;
 		public var widthInWallTextures:uint = 32;
 		public var heightInWallTextures:uint = 8;
-		public var widthInFloorTextures:uint = 2;
-		public var heightInFloorTextures:uint = 8;
+		public var widthInFloorTextures:uint = 5;
+		public var heightInFloorTextures:uint = 10;
 		public var texFloorWidth:Number = 128;
 		public var texFloorHeight:Number = 128;
 		public var texWallWidth:Number = 128;
@@ -54,7 +54,7 @@ package
 			
 			lightmap = new Array(totalTiles);
 			lights = new Array(totalTiles);
-			setAmbientLighting(2);
+			setAmbientLighting(4);
 			var _tileIndex:int;
 			for (var _x:uint = 0; _x < widthInTiles; _x++)
 			{

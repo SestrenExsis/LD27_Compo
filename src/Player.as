@@ -6,6 +6,16 @@ package
 	
 	public class Player extends FlxSprite
 	{
+		public static const CORRECT:uint = 0;
+		public static const WRONG_WAY:uint = 1;
+		public static const UPSIDE_DOWN:uint = 2;
+		public static const UPSIDE_DOWN_AND_WRONG_WAY:uint = 3;
+		
+		public static const TOKEN:uint = 0;
+		public static const ONE_DOLLAR_BILL:uint = 1;
+		public static const FIVE_DOLLAR_BILL:uint = 2;
+		public static const TEN_DOLLAR_BILL:uint = 3;
+		
 		private static var kUp:String = "W";
 		private static var kDown:String = "S";
 		private static var kLeft:String = "A";
@@ -26,8 +36,14 @@ package
 		public var magDir:Number = 0;
 		public var magView:Number = 0;
 		public var angView:Number = 0;
+		public var viewOffset:Number = 0;
 		
-		public function Player(X:Number = 2, Y:Number = 2)
+		public var inventory:Array = [ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, FIVE_DOLLAR_BILL, TEN_DOLLAR_BILL];
+		
+		public var itemFacing:uint = CORRECT;
+		public var currentItem:uint = 0;
+		
+		public function Player(X:Number = 3, Y:Number = 2)
 		{
 			super(X, Y);
 			
@@ -39,13 +55,22 @@ package
 			y = Y * 128 - height / 2;
 			velocity.x = moveSpeed;
 			drag.x = drag.y = 8 * moveSpeed;
-			
+			angle = 90;
 			_dir = new FlxPoint(1, 0); // initial direction vector
 			magDir = Math.sqrt(_dir.x * _dir.x + _dir.y * _dir.y);
 			_view = new FlxPoint(0, 1); //the 2d raycaster version of camera plane
 			fov = 66 * (Math.PI / 180);
 			_pos = new FlxPoint();
 			_rayDir = new FlxPoint();
+			
+			inventory.sort(randomSort);
+			inventory.unshift(ONE_DOLLAR_BILL);
+		}
+		
+		private function randomSort(a:*, b:*):Number
+		{
+			if (FlxG.random() < 0.5) return -1;
+			else return 1;
 		}
 		
 		override public function draw():void
@@ -102,6 +127,39 @@ package
 				angularVelocity = -rotSpeed * speedMultiplier * (180 / Math.PI);
 			}
 			else angularVelocity = 0;
+			
+			if (FlxG.keys.justPressed("J")) nextItem();
+			else if (FlxG.keys.justPressed("K")) flipItem();
+		}
+		
+		private function nextItem():void
+		{
+			currentItem += 1;
+			if (currentItem >= inventory.length) 
+			{
+				inventory.sort(randomSort);
+				currentItem = 0;
+			}
+			if (FlxG.random() < 0.5) itemFacing = CORRECT;
+			else itemFacing = UPSIDE_DOWN;
+		}
+		
+		private function flipItem():void
+		{
+			if (itemFacing == CORRECT) itemFacing = UPSIDE_DOWN;
+			else itemFacing = CORRECT;
+		}
+		
+		public function useItem():void
+		{
+			if (itemFacing == CORRECT && inventory[currentItem] != TEN_DOLLAR_BILL)
+			{
+				FlxG.log("CORRECT");
+			}
+			else
+			{
+				FlxG.log("INCORRECT");
+			}
 		}
 		
 		public function light(LightLevel:uint):void

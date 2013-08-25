@@ -8,6 +8,9 @@ package
 	{
 		[Embed(source="../assets/images/POVSprites.png")] protected static var imgPOV:Class;
 		
+		public static const animationNames:Array = ["token", "one_front", "five_front", "ten_front",
+			"quarter", "one_back", "five_back", "ten_back"];
+		
 		public var swayRadius:Number = 64;
 		public var maxSwayAngle:Number = 60;
 		//public var swayTime:Number = 1;
@@ -22,7 +25,14 @@ package
 			target = Target;
 			
 			loadGraphic(imgPOV, true, true, 128, 128);
-			addAnimation("cash",[1]);
+			addAnimation("one_front",[1]);
+			addAnimation("five_front",[2]);
+			addAnimation("ten_front",[3]);
+			addAnimation("token",[4]);
+			addAnimation("one_back",[11]);
+			addAnimation("five_back",[12]);
+			addAnimation("ten_back",[13]);
+			addAnimation("quarter",[14]);
 			
 			width = 128;
 			height = 128;
@@ -33,8 +43,7 @@ package
 			
 			scrollFactor.x = scrollFactor.y = 0;
 			scale.x = scale.y = 2;
-			play("cash");
-			FlxG.watch(this,"swayPosition");
+			play("one_back");
 		}
 		
 		override public function draw():void
@@ -46,6 +55,10 @@ package
 		{
 			super.update();
 			
+			var _displayIndex:int = target.inventory[target.currentItem];
+			if (target.itemFacing == Player.UPSIDE_DOWN) _displayIndex += 4;
+			play(animationNames[_displayIndex]);
+			
 			var _speed:Number = Math.sqrt(target.velocity.x * target.velocity.x + target.velocity.y * target.velocity.y) / target.moveSpeed;
 			var _delta:Number = _speed * Math.sqrt((swayDelta) / swayRadius);
 			//var _period:Number = (2 * Math.PI) / Math.sqrt(swayDelta / swayRadius);;
@@ -54,6 +67,7 @@ package
 			swayAngle = maxSwayAngle * Math.sin(swayPosition);
 			offset.x = swayRadius * Math.sin(swayAngle * Math.PI / 180);
 			offset.y = swayRadius * Math.cos(swayAngle * Math.PI / 180);
+			target.viewOffset = offset.y / swayRadius;
 		}
 		
 		public function light(LightLevel:uint):void

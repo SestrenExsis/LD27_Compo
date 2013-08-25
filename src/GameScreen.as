@@ -102,7 +102,7 @@ package
 			_pt = new FlxPoint();
 			_intersect = new FlxPoint();
 			
-			player = new Player(2, 2);
+			player = new Player();
 			FlxG.camera.follow(player);
 			playerPOV = new PlayerPOV(player);
 			
@@ -129,8 +129,8 @@ package
 			FlxG.overlap(player, arcade, collideWithMap);
 			
 			viewport.fill(0xff000000);
-			viewport.pixels.fillRect(ceilingRect, 0xff000000);
-			viewport.pixels.fillRect(floorRect, 0xff000000);
+			//viewport.pixels.fillRect(ceilingRect, 0xff000000);
+			//viewport.pixels.fillRect(floorRect, 0xff000000);
 			if (FlxG.keys.justPressed("T")) showTriangleEdges = !showTriangleEdges;
 			
 			drawViewWithFaces();
@@ -138,7 +138,11 @@ package
 		
 		private function collideWithMap(Object1:FlxObject, Object2:FlxObject):void
 		{
-			FlxObject.separate(Object1, Object2);
+			if (FlxObject.separate(Object1, Object2))
+			{
+				var _tile:uint = arcade.getTile(int((player.pos.x + 64 * player.dir.x) / arcade.texFloorWidth), int((player.pos.y + 64 * player.dir.y) / arcade.texFloorHeight));
+				if (_tile > 28) player.useItem();
+			}
 		}
 		
 		private function drawViewWithFaces():void
@@ -167,6 +171,8 @@ package
 			}
 			
 			viewport.pixels.draw(canvas);
+			playerPOV.light(arcade.lightmap[int(player.pos.x / arcade.texFloorWidth)
+				+ arcade.widthInTiles * int(player.pos.y / arcade.texFloorHeight)]);
 		}
 		
 		private function addFacesToBuffer(SearchResolution:uint):void
@@ -269,7 +275,7 @@ package
 					_distX = playerPosX - tileX;
 					_distY = playerPosY - tileY;
 					_renderDistance = Math.sqrt(_distX * _distX + _distY * _distY);
-				} while (passedThroughTile(tileX, tileY) == 0)// && _renderDistance < maxRenderDistance); //Check if ray has hit a wall
+				} while (passedThroughTile(tileX, tileY))// && _renderDistance < maxRenderDistance); //Check if ray has hit a wall
 				
 				//if (_renderDistance <= maxRenderDistance)
 				{
@@ -299,7 +305,7 @@ package
 			}
 		}
 		
-		public function passedThroughTile(TileX:uint, TileY:uint):uint
+		public function passedThroughTile(TileX:uint, TileY:uint):Boolean
 		{
 			var _tile:uint = arcade.getTile(TileX, TileY);
 			var _index:uint = TileX + TileY * arcade.widthInTiles;
@@ -329,7 +335,7 @@ package
 				}
 			}
 			arcade.vismap[negative * _index] = _face;
-			return _tile;
+			return (_tile == 0);
 		}
 		
 		private function renderFloor(StartTileX:Number, StartTileY:Number, EndTileX:Number, EndTileY:Number, IterationsLeft:uint = 2):void
@@ -420,10 +426,12 @@ package
 				var _startTexY:Number = arcade.uvFloorHeight * (StartTileY - int(StartTileY));
 				var _endTexX:Number = arcade.uvFloorWidth * (EndTileX - int(StartTileX));
 				var _endTexY:Number = arcade.uvFloorHeight * (EndTileY - int(StartTileY));
-				floorSourceRect.x = 0 * arcade.uvFloorWidth + _startTexX;
-				floorSourceRect.y = _light * arcade.uvFloorHeight + _startTexY;
-				floorSourceRect.width = 0 * arcade.uvFloorWidth + _endTexX;
-				floorSourceRect.height = _light * arcade.uvFloorHeight + _endTexY;
+				
+				//x, y, width, and height must be moved over 1 to give a texture "buffer" zone to prevent seams.
+				floorSourceRect.x = 1 * arcade.uvFloorWidth + _startTexX;
+				floorSourceRect.y = (_light + 1) * arcade.uvFloorHeight + _startTexY;
+				floorSourceRect.width = 1 * arcade.uvFloorWidth + _endTexX;
+				floorSourceRect.height = (_light + 1) * arcade.uvFloorHeight + _endTexY;
 				drawPlaneToCanvas(floorPt0, floorPt1, floorPt2, floorPt3, floorSourceRect, arcade.floorTextures.pixels);
 				
 				floorPt0.y = viewport.height - floorPt0.y;
@@ -431,8 +439,9 @@ package
 				floorPt2.y = viewport.height - floorPt2.y;
 				floorPt3.y = viewport.height - floorPt3.y;
 				
-				floorSourceRect.x = 1 * arcade.uvFloorWidth + _startTexX;
-				floorSourceRect.width = 1 * arcade.uvFloorWidth + _endTexX;
+				//x and width must be moved over an additional 2 to give a texture "buffer" zone to prevent seams.
+				floorSourceRect.x = 3 * arcade.uvFloorWidth + _startTexX;
+				floorSourceRect.width = 3 * arcade.uvFloorWidth + _endTexX;
 				drawPlaneToCanvas(floorPt0, floorPt1, floorPt2, floorPt3, floorSourceRect, arcade.floorTextures.pixels);
 			}
 		}
@@ -482,123 +491,55 @@ package
 			_pt.y = TileY * arcade.texFloorHeight;
 			if (Face == Arcade.EAST || Face == Arcade.SOUTH) _pt.x += arcade.texFloorWidth;
 			if (Face == Arcade.WEST || Face == Arcade.SOUTH) _pt.y += arcade.texFloorHeight;
-			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1)
+			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0)
 			if (_ptDistance == -1)
 			{
-				sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+				sourceRect.x += _shiftAmount * arcade.uvWallWidth;
 				if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
 				else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
 				else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
 				else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 				if (_ptDistance == -1)
 				{	// If the distance is negative, then the point is behind the player, and will not render properly. So, we need to cut
-					//part of the wall off and try again
-					sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+					//part of the wall off and try again, and again, and again, if needed ...
+					sourceRect.x += _shiftAmount * arcade.uvWallWidth;
 					if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
 					else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
 					else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
 					else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-					_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
-					if (_ptDistance == -1)
-					{
-						sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
-						if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-						else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
-						else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-						else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-						_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
-						if (_ptDistance == -1)
-						{
-							sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
-							if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-							else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
-							else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-							else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-							_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
-							if (_ptDistance == -1)
-							{
-								sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
-								if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-								else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
-								else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-								else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-								_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
-								if (_ptDistance == -1)
-								{
-									sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
-									if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-									else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
-									else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-									else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-									_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
-								}
-							}
-						}
-					}
-				}
-			}
-			if (_ptDistance == -1) return;
-			
-			//distance to lower-left corner of face
-			pt3.x = pt1.x;
-			pt3.y = viewport.height - pt1.y;
-			
-			//distance to upper-right corner of face
-			_pt.x = TileX * arcade.texFloorWidth;
-			_pt.y = TileY * arcade.texFloorHeight;
-			if (Face == Arcade.NORTH || Face == Arcade.EAST) _pt.x += arcade.texFloorWidth;
-			if (Face == Arcade.EAST || Face == Arcade.SOUTH) _pt.y += arcade.texFloorHeight;
-			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
-			
-			if (_ptDistance == -1)
-			{	// If the distance is negative, then the point is behind the player, and will not render properly. So, we need to cut
-				//part of the wall off and try again
-				sourceRect.x += _shiftAmount * arcade.uvWallWidth;
-				if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-				else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-				else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-				else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
-				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
-				if (_ptDistance == -1)
-				{
-					sourceRect.x += _shiftAmount * arcade.uvWallWidth;
-					if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-					else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-					else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-					else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
 					_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 					if (_ptDistance == -1)
 					{
 						sourceRect.x += _shiftAmount * arcade.uvWallWidth;
-						if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-						else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-						else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-						else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+						if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+						else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+						else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+						else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
 						_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 						if (_ptDistance == -1)
 						{
 							sourceRect.x += _shiftAmount * arcade.uvWallWidth;
-							if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-							else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-							else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-							else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+							if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+							else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+							else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+							else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
 							_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 							if (_ptDistance == -1)
 							{
 								sourceRect.x += _shiftAmount * arcade.uvWallWidth;
-								if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-								else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-								else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-								else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+								if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+								else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+								else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+								else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
 								_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 								if (_ptDistance == -1)
 								{
 									sourceRect.x += _shiftAmount * arcade.uvWallWidth;
-									if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
-									else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
-									else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
-									else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+									if (Face == Arcade.NORTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+									else if (Face == Arcade.EAST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+									else if (Face == Arcade.SOUTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+									else if (Face == Arcade.WEST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
 									_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt0);
 								}
 							}
@@ -608,9 +549,77 @@ package
 			}
 			if (_ptDistance == -1) return;
 			
-			//distance to lower-right corner of face
+			//distance to lower-left corner of face
 			pt2.x = pt0.x;
 			pt2.y = viewport.height - pt0.y;
+			
+			//distance to upper-right corner of face
+			_pt.x = TileX * arcade.texFloorWidth;
+			_pt.y = TileY * arcade.texFloorHeight;
+			if (Face == Arcade.NORTH || Face == Arcade.EAST) _pt.x += arcade.texFloorWidth;
+			if (Face == Arcade.EAST || Face == Arcade.SOUTH) _pt.y += arcade.texFloorHeight;
+			_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+			
+			if (_ptDistance == -1)
+			{	// If the distance is negative, then the point is behind the player, and will not render properly. So, we need to cut
+				//part of the wall off and try again, and again, and again, if needed ...
+				sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+				if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+				else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
+				else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+				else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+				_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+				if (_ptDistance == -1)
+				{
+					sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+					if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+					else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
+					else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+					else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+					_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+					if (_ptDistance == -1)
+					{
+						sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+						if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+						else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
+						else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+						else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+						_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+						if (_ptDistance == -1)
+						{
+							sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+							if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+							else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
+							else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+							else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+							_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+							if (_ptDistance == -1)
+							{
+								sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+								if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+								else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
+								else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+								else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+								_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+								if (_ptDistance == -1)
+								{
+									sourceRect.width -= _shiftAmount * arcade.uvWallWidth;
+									if (Face == Arcade.NORTH) _pt.x -= _shiftAmount * arcade.texFloorWidth;
+									else if (Face == Arcade.EAST) _pt.y -= _shiftAmount * arcade.texFloorHeight;
+									else if (Face == Arcade.SOUTH) _pt.x += _shiftAmount * arcade.texFloorWidth;
+									else if (Face == Arcade.WEST) _pt.y += _shiftAmount * arcade.texFloorHeight;
+									_ptDistance = projectPointToScreen(_pt.x, _pt.y, arcade.texFloorHeight, pt1);
+								}
+							}
+						}
+					}
+				}
+			}
+			if (_ptDistance == -1) return;
+			
+			//distance to lower-right corner of face
+			pt3.x = pt1.x;
+			pt3.y = viewport.height - pt1.y;
 			
 			drawPlaneToCanvas(pt0, pt1, pt2, pt3, sourceRect, arcade.wallTextures.pixels);
 		}
