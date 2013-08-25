@@ -26,9 +26,10 @@ package
 		private var playerPOV:PlayerPOV;
 		private var arcade:Arcade;
 		private var entity:Entity;
+		private var objectives:FlxGroup;
 		private var entities:FlxGroup;
 		
-		private var currentTarget:uint = 1;
+		private var orderOfObjectives:Array = [0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5];
 		
 		//for drawing triangles
 		private var canvas:Sprite;
@@ -101,9 +102,17 @@ package
 			player = new Player();
 			FlxG.camera.follow(player);
 			playerPOV = new PlayerPOV(player);
-			entities = new FlxGroup();
+			
+			objectives = new FlxGroup();
 			entity = new Entity(Entity.OBJECTIVE_MAKE_CHANGE, 4.5, 26);
-			entities.add(entity);
+			objectives.add(entity);
+			entity = new Entity(Entity.OBJECTIVE_GET_CHANGE, 3.5, 26);
+			(objectives.members[0] as Entity).target = entity;
+			objectives.add(entity);
+			entity = new Entity(Entity.OBJECTIVE_START_GAME, 2, 21.5);
+			objectives.add(entity);
+			
+			entities = new FlxGroup();
 			
 			arcade = new Arcade(canvas, player);
 			sourceRect = new Rectangle(0, 0, arcade.uvWallWidth, arcade.uvWallHeight);
@@ -116,7 +125,9 @@ package
 			add(arcade);
 			add(player);
 			add(entities);
+			add(objectives);
 			add(playerPOV);
+			add(information);
 			
 			zBuffer = new Array(viewport.width);
 			maxRenderDistance = 30;
@@ -127,13 +138,16 @@ package
 			super.update();
 			
 			FlxG.overlap(player, arcade, collideWithMap);
-			FlxG.overlap(player, entities, collideWithEntity);
+			FlxG.overlap(player, objectives, collideWithObjective);
 			
 			viewport.fill(0xff000000);
 			if (FlxG.keys.justPressed("T")) showTriangleEdges = !showTriangleEdges;
 			
 			drawViewWithFaces();
 			renderEntities();
+			renderObjectives();
+			
+			information.text = player.info;
 		}
 		
 		private function collideWithMap(Object1:FlxObject, Object2:FlxObject):void
@@ -141,12 +155,23 @@ package
 			FlxObject.separate(Object1, Object2);
 		}
 		
-		private function collideWithEntity(Object1:FlxObject, Object2:FlxObject):void
+		private function collideWithObjective(Object1:FlxObject, Object2:FlxObject):void
 		{
-			//var _tile:uint = arcade.getTile(int((player.pos.x + 64 * player.dir.x) / arcade.texFloorWidth), int((player.pos.y + 64 * player.dir.y) / arcade.texFloorHeight));
-			//if (_tile > 28) player.useItem();
-			if (Object1 is Player) player.useItem(Object2 as Entity);
-			else player.useItem(Object1 as Entity);
+			if (Object1 is Player) 
+			{
+				if (player.timer.finished) 
+				{
+					FlxG.log((Object2 as Entity).target);
+					if ((Object2 as Entity).target)
+					{
+						if (player.useItem(Object2 as Entity, (Object2 as Entity).target)
+							&& (Object2 as Entity).ID == orderOfObjectives[player.currentObjective]) player.currentObjective += 1;
+					}
+					else if (player.useItem(Object2 as Entity)
+						&& (Object2 as Entity).ID == orderOfObjectives[player.currentObjective]) player.currentObjective += 1;
+				}
+			}
+			else collideWithObjective(Object2, Object1);
 		}
 		
 		private function drawViewWithFaces():void
@@ -628,6 +653,26 @@ package
 			drawPlaneToCanvas(pt0, pt1, pt2, pt3, sourceRect, arcade.wallTextures.pixels);
 		}
 		
+		public function renderObjectives():void
+		{
+			for (var i:uint = 0; i < objectives.length; i++)
+			{
+				entity = objectives.members[i];
+				if (entity.exists)
+				{
+					entity.distance = projectPointToScreen(entity.pos.x, entity.pos.y, 0.5 * arcade.texFloorHeight, entity.viewPos, entity);
+					if (entity.ID == orderOfObjectives[player.currentObjective])
+					{
+						entity.visible = true;
+						entity.angleToPlayer = Math.abs(FlxU.getAngle(entity.pos, player.pos) - player.viewAngle + 360) % 360;
+						entity.distanceToPlayer = FlxU.getDistance(entity.pos, player.pos);
+					}
+					else entity.visible = false;
+				}
+			}
+			entities.sort("distance", DESCENDING);
+		}
+		
 		public function renderEntities():void
 		{
 			var _clipLeft:uint;
@@ -643,15 +688,8 @@ package
 				entity = entities.members[i];
 				if (entity.exists)
 				{
-					entity.distance = projectPointToScreen(entity.x, entity.y, 0.5 * arcade.texFloorHeight, entity.viewPos, entity);
-					if (entity.ID == currentTarget) 
-					{
-						entity.visible = true;
-						entity.angleToPlayer = Math.abs(FlxU.getAngle(entity.pos, player.pos) - player.viewAngle + 360) % 360;
-						entity.distanceToPlayer = FlxU.getDistance(entity.pos, player.pos);
-					}
-					else entity.visible = false;
-					if (entity.distance > 0 && entity.doClipping) 
+					entity.distance = projectPointToScreen(entity.pos.x, entity.pos.y, 0.5 * arcade.texFloorHeight, entity.viewPos, entity);
+					if (entity.distance > -1) 
 					{
 						_width = entity.frameWidth * entity.scale.x;
 						
@@ -681,20 +719,6 @@ package
 						}
 						else entity.distance = -1;
 					}
-					/*else if (entity.bobStyle == Entity.LEFT_AND_RIGHT)
-					{
-						entity.scale.x = entity.scale.y = 1;
-						if (entity.angleToPlayer >= 90 && entity.angleToPlayer <= 270)
-						{
-							entity.viewPos.x = FlxG.width - 0.5 * entity.frameWidth;
-							entity.play("right_arrow");
-						}
-						else
-						{
-							entity.viewPos.x = 0.5 * entity.frameWidth;
-							entity.play("left_arrow");
-						}
-					}*/
 				}
 			}
 			entities.sort("distance", DESCENDING);

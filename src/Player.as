@@ -41,15 +41,20 @@ package
 		public var itemSwapDelta:int = 0;
 		public var swapItemBuffer:Boolean = false;
 		public var flipItemBuffer:Boolean = false;
+		public var removeItemBuffer:Boolean = false;
 		public var timer:FlxTimer;
 		
-		public var inventory:Array = [ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, FIVE_DOLLAR_BILL, TEN_DOLLAR_BILL];
+		public var inventory:Array = [ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, TEN_DOLLAR_BILL];
 		
 		public var itemFacing:uint = CORRECT;
 		public var currentItem:uint = 0;
+		public var staleMessage:Boolean = false;
+		public var tokens:uint = 0;
 		
-		//public var itemLocations:Array = [];
-		//public var 
+		//public var nextObjective:Entity;
+		public var target:Entity;
+		public var currentObjective:int = 0;
+		public var info:String = "";
 		
 		public function Player(X:Number = 3.5, Y:Number = 2)
 		{
@@ -170,7 +175,20 @@ package
 				if (itemFacing == CORRECT) itemFacing = UPSIDE_DOWN;
 				else itemFacing = CORRECT;
 			}
-			swapItemBuffer = flipItemBuffer = false;
+			else if (removeItemBuffer)
+			{
+				var _item:uint = removeItemFromInventory(currentItem);
+				inventory.sort(randomSort);
+				currentItem = 0;
+				if (FlxG.random() < 0.5) itemFacing = CORRECT;
+				else itemFacing = UPSIDE_DOWN;
+				if (target)
+				{
+					if (_item == Entity.FIVE_DOLLAR_BILL) target.tokens += 20;
+					else target.tokens += 4;
+				}
+			}
+			swapItemBuffer = flipItemBuffer = removeItemBuffer = false;
 		}
 		
 		private function onTimerSwapDone(Timer:FlxTimer):void
@@ -178,11 +196,12 @@ package
 			timer.stop();
 			itemSwapDelta = 0;
 			itemSwapOffset = 0;
+			staleMessage = false;
 		}
 		
 		private function nextItem():void
 		{
-			if (flipItemBuffer) return;//if we're flipping the current item, don't skip to the next one
+			if (flipItemBuffer || removeItemBuffer || tokens > 0) return; //Don't skip to the next one
 			if (itemSwapDelta == 0)
 			{
 				swapItemBuffer = true;
@@ -207,7 +226,7 @@ package
 			//if (itemFacing == CORRECT) itemFacing = UPSIDE_DOWN;
 			//else itemFacing = CORRECT;
 			
-			if (swapItemBuffer) return;//if we're swapping the current item, don't bother flipping
+			if (swapItemBuffer || removeItemBuffer || tokens > 0) return; //Don't bother flipping
 			if (itemSwapDelta == 0)
 			{
 				flipItemBuffer = true;
@@ -227,20 +246,100 @@ package
 			}
 		}
 		
-		public function useItem(Ent:Entity):void
+		public function useItem(Ent:Entity, Target:Entity = null):Boolean
 		{
-			if (!timer.finished) return;
+			if (!timer.finished) return false;
+			
 			if (Ent.type == Entity.OBJECTIVE_MAKE_CHANGE)
 			{
-				if (itemFacing == CORRECT && inventory[currentItem] != TEN_DOLLAR_BILL)
+				if (target)
 				{
-					FlxG.log("CORRECT");
+					info = "You've already paid for tokens. Get them from the coin deposit slot.";
+					staleMessage = true;
 				}
-				else
+				else if (tokens > 0)
 				{
-					FlxG.log("INCORRECT");
+					info = "You already have tokens to play with.";
+					staleMessage = true;
+				}
+				else if (itemFacing == CORRECT && inventory[currentItem] != TEN_DOLLAR_BILL)
+				{
+					removeItemBuffer = true;
+					onTimerSwapOut(timer);
+					target = Target;
+					FlxG.log("target is " + target);
+					staleMessage = false;
+					return true;
+				}
+				else if (!staleMessage)
+				{
+					if (inventory[currentItem] == TEN_DOLLAR_BILL)
+					{
+						info = "This machine does not accept ten-dollar bills.";
+						staleMessage = true;
+					}
+					else if (itemFacing != CORRECT)
+					{
+						info = "The bill is not facing the correct way.";
+						staleMessage = true;
+					}
 				}
 			}
+			else if (Ent.type == Entity.OBJECTIVE_GET_CHANGE)
+			{
+				if (target)
+				{
+					if (target.tokens > 0)
+					{
+						tokens += target.tokens;
+						target.tokens = 0;
+						target = null;
+						return true;
+					}
+					else if (!staleMessage)
+					{
+						info = "The coin deposit slot is empty.";
+						staleMessage = true;
+					}
+				}
+				else if (tokens == 0)
+				{
+					info = "You haven't inserted any bills into the machine yet.";
+					staleMessage = true;
+				}
+			}
+			else if (Ent.type == Entity.OBJECTIVE_START_GAME)
+			{
+				if (tokens > 0)
+				{
+					tokens = 0;
+					//startGame();
+					return true;
+				}
+				else if (tokens == 0)
+				{
+					info = "You are out of tokens. Get some more from the nearest token machine.";
+					staleMessage = true;
+				}
+			}
+			
+			return false;
+		}
+		
+		public function removeItemFromInventory(Index:uint):uint
+		{
+			var _itemType:uint = inventory[Index];
+			if (Index == inventory.length - 1)  inventory.pop();
+			else if (Index == 0) inventory.shift();
+			else
+			{
+				for (var i:uint = Index; i < inventory.length - 1; i++)
+				{
+					inventory[i] = inventory[i + 1];
+				}
+				inventory.pop();
+			}
+			return _itemType;
 		}
 		
 		public function light(LightLevel:uint):void

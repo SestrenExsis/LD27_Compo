@@ -54,8 +54,13 @@ package
 		{
 			super.update();
 			
-			var _displayIndex:int = target.inventory[target.currentItem];
-			if (target.itemFacing == Player.UPSIDE_DOWN) _displayIndex += 4;
+			var _displayIndex:int;
+			if (target.tokens > 0) _displayIndex = 0;
+			else 
+			{
+				_displayIndex = target.inventory[target.currentItem];
+				if (target.itemFacing == Player.UPSIDE_DOWN) _displayIndex += 4;
+			}
 			play(animationNames[_displayIndex]);
 			
 			var _speed:Number = Math.sqrt(target.velocity.x * target.velocity.x + target.velocity.y * target.velocity.y) / target.moveSpeed;

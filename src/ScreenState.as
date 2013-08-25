@@ -4,6 +4,7 @@ package
 	
 	public class ScreenState extends FlxState
 	{
+		public var information:FlxText;
 		
 		public function ScreenState()
 		{
@@ -14,6 +15,10 @@ package
 		{
 			super.create();
 			FlxG.flash(0xff000000, 0.5);
+			
+			information = new FlxText(0, 0, FlxG.width, "blah");
+			information.setFormat(null, 16, 0xff0000, "left");
+			information.scrollFactor.x = information.scrollFactor.y = 0;
 		}
 		
 		override public function update():void

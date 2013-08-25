@@ -23,7 +23,7 @@ package
 		public static const UP_AND_DOWN:uint = 0;
 		public static const LEFT_AND_RIGHT:uint = 1;
 		
-		public static var currentID:uint = 1;
+		public static var currentID:uint = 0;
 		
 		protected var _pos:FlxPoint;
 		protected var _type:uint;
@@ -41,6 +41,9 @@ package
 		public var endingColor:uint = 0xffffff;
 		public var angleToPlayer:Number;
 		public var distanceToPlayer:Number;
+		
+		public var prevObjectiveID:int;
+		public var target:Entity;
 		
 		public var tokens:uint = 0;
 		
@@ -67,10 +70,11 @@ package
 			timer.start(0.001);
 			type = Type;
 			
-			ID = currentID++;
-			play("down_arrow");
+			target = null;
 			
-			FlxG.watch(this, "angleToPlayer");
+			if (type >= OBJECTIVE_START_GAME) ID = currentID++;
+			else ID = -1;
+			play("down_arrow");
 		}
 		
 		override public function draw():void
@@ -142,7 +146,7 @@ package
 			
 			if (type >= OBJECTIVE_START_GAME)
 			{
-				if (distanceToPlayer < 64)
+				if (distanceToPlayer < 32)
 				{
 					visible = false;
 				}
