@@ -27,9 +27,9 @@ package
 		private var arcade:Arcade;
 		private var entity:Entity;
 		private var objectives:FlxGroup;
-		private var entities:FlxGroup;
+		//private var entities:FlxGroup;
 		
-		private var orderOfObjectives:Array = [0, 1, 2, 0, 1, 2, 3, 4, 5, 3, 4, 5];
+		private var orderOfObjectives:Array = [0, 1, 2, 0, 1, 2, 3, 4, 5, 6, 7, 5, 6, 7, 8, 6, 7, 8];
 		
 		//for drawing triangles
 		private var canvas:Sprite;
@@ -64,7 +64,7 @@ package
 		private var aspectRatio:Number;
 		private var maxRenderDistance:Number;
 		
-		private var zBuffer:Array;
+		//private var zBuffer:Array;
 		
 		public function GameScreen()
 		{
@@ -104,6 +104,7 @@ package
 			playerPOV = new PlayerPOV(player);
 			
 			objectives = new FlxGroup();
+			//the first game
 			entity = new Entity(Entity.OBJECTIVE_MAKE_CHANGE, 4.5, 26);
 			objectives.add(entity);
 			entity = new Entity(Entity.OBJECTIVE_GET_CHANGE, 3.5, 26);
@@ -111,6 +112,8 @@ package
 			objectives.add(entity);
 			entity = new Entity(Entity.OBJECTIVE_START_GAME, 2, 21.5);
 			objectives.add(entity);
+			
+			//the second game
 			entity = new Entity(Entity.OBJECTIVE_MAKE_CHANGE, 15.5, 20);
 			objectives.add(entity);
 			entity = new Entity(Entity.OBJECTIVE_GET_CHANGE, 14.5, 20);
@@ -119,7 +122,16 @@ package
 			entity = new Entity(Entity.OBJECTIVE_START_GAME, 9, 7.5);
 			objectives.add(entity);
 			
-			entities = new FlxGroup();
+			//the last game
+			entity = new Entity(Entity.OBJECTIVE_MAKE_CHANGE, 14.5, 5);
+			objectives.add(entity);
+			entity = new Entity(Entity.OBJECTIVE_GET_CHANGE, 15.5, 5);
+			(objectives.members[6] as Entity).target = entity;
+			objectives.add(entity);
+			entity = new Entity(Entity.OBJECTIVE_START_GAME, 19.5, 25);
+			objectives.add(entity);
+			
+			//entities = new FlxGroup();
 			
 			arcade = new Arcade(canvas, player);
 			sourceRect = new Rectangle(0, 0, arcade.uvWallWidth, arcade.uvWallHeight);
@@ -131,15 +143,49 @@ package
 			add(viewport);
 			add(arcade);
 			add(player);
-			add(entities);
+			//add(entities);
 			add(objectives);
 			add(playerPOV);
 			add(overlay);
 			add(information);
+			add(information2);
 			
-			zBuffer = new Array(viewport.width);
+			//zBuffer = new Array(viewport.width);
 			maxRenderDistance = 30;
+			
+			FlxG.watch(player, "currentObjective");
 		}
+		
+		/*override public function destroy():void
+		{
+			super.destroy();
+			canvas = null;
+			pt0 = null;
+			pt1 = null;
+			pt2 = null;
+			pt3 = null;
+			floorPt0 = null;
+			floorPt1 = null;
+			floorPt2 = null;
+			floorPt3 = null;
+			uv = null;
+			_point = null;
+			_pt = null;
+			_intersect = null;
+			
+			player = null;
+			playerPOV = null;
+			
+			objectives.destroy();
+			//the first game
+			
+			arcade = null;
+			sourceRect =  null;
+			floorSourceRect =  null;
+			destRect =  null;
+			ceilingRect =  null;
+			floorRect =  null;
+		}*/
 		
 		override public function update():void
 		{	
@@ -149,13 +195,22 @@ package
 			FlxG.overlap(player, objectives, collideWithObjective);
 			
 			viewport.fill(0xff000000);
-			if (FlxG.keys.justPressed("T")) showTriangleEdges = !showTriangleEdges;
+			//if (FlxG.keys.justPressed("T")) showTriangleEdges = !showTriangleEdges;
 			
 			drawViewWithFaces();
-			renderEntities();
+			//renderEntities();
 			renderObjectives();
 			
 			information.text = player.info;
+		}
+		
+		private function onTimerGameOver(Timer:FlxTimer):void
+		{
+			//information.text = "Refresh the page to try again.";
+			information2.text = "Refresh the page to try again.";
+			player.currentObjective = 0;
+			player.playingGame = true;
+			timer.stop();
 		}
 		
 		private function collideWithMap(Object1:FlxObject, Object2:FlxObject):void
@@ -171,11 +226,53 @@ package
 				{
 					if ((Object2 as Entity).target)
 					{
-						if (player.useItem(Object2 as Entity, (Object2 as Entity).target)
-							&& (Object2 as Entity).ID == orderOfObjectives[player.currentObjective]) player.currentObjective += 1;
+						if ((Object2 as Entity).ID == orderOfObjectives[player.currentObjective])
+						{
+							if (player.useItem(Object2 as Entity, (Object2 as Entity).target)) player.currentObjective += 1;
+						}
 					}
-					else if (player.useItem(Object2 as Entity)
-						&& (Object2 as Entity).ID == orderOfObjectives[player.currentObjective]) player.currentObjective += 1;
+					else 
+					{
+						if ((Object2 as Entity).ID == orderOfObjectives[player.currentObjective])
+						{
+							if (player.useItem(Object2 as Entity)) player.currentObjective += 1;
+						}
+						if ((Object2 as Entity).type == Entity.OBJECTIVE_START_GAME)
+						{
+							if (player.currentObjective == 18) 
+							{
+								overlay.play("win", true);
+								timer.stop();
+							}
+							else if (player.currentObjective == 3 || player.currentObjective == 9
+								|| player.currentObjective == 15) 
+							{
+								timer.stop();
+								timer.start(10, 1, onTimerGameOver);
+								overlay.play("countdown", true);
+							}
+							else if (player.currentObjective == 6 || player.currentObjective == 12
+								|| player.currentObjective == 18) 
+							{
+								timer.stop();
+								timer.start(10, 1, onTimerGameOver);
+								overlay.play("hurry", true);
+							}
+							
+							if (player.currentObjective == 3) 
+								information2.text = "You're out of lives! You need more tokens to continue!";
+							else if (player.currentObjective == 6)
+								information2.text = "Now hurry to the next game before someone else gets there!";
+							else if (player.currentObjective == 9)
+								information2.text = "You're out of lives! Hurry!";
+							else if (player.currentObjective == 12)
+								information2.text = "Just one more game to beat and then you can stop off for ice cream.";
+							else if (player.currentObjective == 15)
+								information2.text = "You're on the final boss. Don't give up now!";
+							else if (player.currentObjective == 18)
+								information2.text = "You did it! And you've got enough money left over for two ice creams!";
+						}
+					}
 				}
 			}
 			else collideWithObjective(Object2, Object1);
@@ -317,7 +414,7 @@ package
 				{
 					if (side == 0) wallDistance = Math.abs((tileX - playerPosX + (1 - stepX) / 2) / player.rayDir.x);
 					else wallDistance= Math.abs((tileY - playerPosY + (1 - stepY) / 2) / player.rayDir.y);
-					zBuffer[x] = wallDistance;
+					//zBuffer[x] = wallDistance;
 					if (lastTileX != tileX || lastTileY != tileY || lastSide != side)
 					{
 						if (wallDistance < lastWallDistance)
@@ -677,58 +774,6 @@ package
 					else entity.visible = false;
 				}
 			}
-			entities.sort("distance", DESCENDING);
-		}
-		
-		public function renderEntities():void
-		{
-			var _clipLeft:uint;
-			var _clipWidth:uint;
-			var _leftEdge:int;
-			var _rightEdge:int;
-			var _width:int;
-			var _posX:uint;
-			var _posY:uint;
-			
-			for (var i:uint = 0; i < entities.length; i++)
-			{
-				entity = entities.members[i];
-				if (entity.exists)
-				{
-					entity.distance = projectPointToScreen(entity.pos.x, entity.pos.y, 0.5 * arcade.texFloorHeight, entity.viewPos, entity);
-					if (entity.distance > -1) 
-					{
-						_width = entity.frameWidth * entity.scale.x;
-						
-						_leftEdge = int(entity.viewPos.x - 0.5 * _width);
-						if (_leftEdge < 0) _leftEdge = 0;
-						_clipLeft = _leftEdge;
-						_rightEdge = int(entity.viewPos.x + 0.5 * _width);
-						if (_rightEdge >= viewport.width) _rightEdge = viewport.width - 1;
-						while ((_clipLeft < _rightEdge) && (_clipLeft + _leftEdge < zBuffer.length) 
-							&& (zBuffer[_clipLeft] < entity.distance)) _clipLeft += 1;
-						
-						entity.clipRect.x = _clipLeft;
-						_clipWidth = _rightEdge - _clipLeft;
-						if (_clipWidth > viewport.width - _clipLeft) _clipWidth = viewport.width - _clipLeft;
-						while ((_clipWidth > 0) && (_clipLeft + _clipWidth < zBuffer.length) 
-							&& (zBuffer[_clipLeft + _clipWidth] < entity.distance)) _clipWidth -= 1;
-						
-						if (_clipWidth > 0)
-						{
-							entity.clipRect.width = _clipWidth + 1;
-							entity.clipRect.x -= 1;
-							entity.clipRect.height = viewport.height;
-							
-							_posX = int(entity.pos.x / arcade.texFloorWidth);
-							_posY = int(entity.pos.y / arcade.texFloorHeight);
-							entity.light(arcade.lightmap[_posX + _posY * arcade.widthInTiles] + 1);
-						}
-						else entity.distance = -1;
-					}
-				}
-			}
-			entities.sort("distance", DESCENDING);
 		}
 		
 		public function drawPlaneToCanvas(Point0:FlxPoint, Point1:FlxPoint, Point2:FlxPoint, Point3:FlxPoint, SourceRect:Rectangle, Bmp:BitmapData):void

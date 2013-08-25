@@ -44,7 +44,7 @@ package
 		public var removeItemBuffer:Boolean = false;
 		public var timer:FlxTimer;
 		
-		public var inventory:Array = [ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, TEN_DOLLAR_BILL];
+		public var inventory:Array = [ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, TEN_DOLLAR_BILL];
 		
 		public var itemFacing:uint = CORRECT;
 		public var currentItem:uint = 0;
@@ -56,7 +56,7 @@ package
 		//public var nextObjective:Entity;
 		public var target:Entity;
 		public var currentObjective:int = 0;
-		public var info:String = "Get to the token machine to get the tokens you'll need to play.";
+		public var info:String = "W/A/S/D to move, Q/E to strafe, J/K to change bills. SHIFT to run.";
 		
 		public function Player(X:Number = 3.5, Y:Number = 2)
 		{
@@ -83,6 +83,7 @@ package
 			
 			inventory.sort(randomSort);
 			inventory.unshift(ONE_DOLLAR_BILL);
+			itemFacing = UPSIDE_DOWN;
 		}
 		
 		private function randomSort(a:*, b:*):Number
@@ -272,7 +273,6 @@ package
 					removeItemBuffer = true;
 					onTimerSwapOut(timer);
 					target = Target;
-					FlxG.log("target is " + target);
 					staleMessage = false;
 					return true;
 				}
@@ -337,7 +337,7 @@ package
 					}
 					else
 					{
-						info = "This is not the game you feel like playing right now.";
+						//info = "This is not the game you feel like playing right now.";
 					}
 				}
 				
@@ -349,6 +349,7 @@ package
 		public function playGame():void
 		{
 			playingGame = true;
+			velocity.x = velocity.y = angularVelocity = 0;
 			FlxG.fade(0xff000000, 0.75, onTimerPlaying, true);
 		}
 		

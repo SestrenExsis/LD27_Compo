@@ -4,13 +4,6 @@ package
 	
 	public class MenuScreen extends ScreenState
 	{
-		//Person --> Player and Stranger
-		//Coin --> Quarter and Token
-		//Cabinet --> Arcade Game and Token Machine, should be 7/8 height from the floor to the ceiling
-		//Obstacle --> ???
-		//Carpet = Faster Jump
-		//Tile = Faster Slide
-		
 		public function MenuScreen()
 		{
 			super();
@@ -19,11 +12,16 @@ package
 		override public function create():void
 		{
 			super.create();
+			
+			information.text = "Click on the screen to start playing.";
+			
+			add(information);
 		}
 		
 		override public function update():void
 		{	
 			super.update();
+			if (FlxG.mouse.justPressed()) goToGame();
 		}
 
 	}
