@@ -67,6 +67,11 @@ package
 			swayAngle = maxSwayAngle * Math.sin(swayPosition);
 			offset.x = swayRadius * Math.sin(swayAngle * Math.PI / 180);
 			offset.y = swayRadius * Math.cos(swayAngle * Math.PI / 180);
+			target.itemSwapOffset += target.itemSwapDelta;
+			offset.y += target.itemSwapOffset;
+			//if (target.flipItemBuffer) offset.x -= target.itemSwapOffset;
+			
+			//currently unused
 			target.viewOffset = offset.y / swayRadius;
 		}
 		

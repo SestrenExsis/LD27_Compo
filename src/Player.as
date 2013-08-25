@@ -37,13 +37,18 @@ package
 		public var magView:Number = 0;
 		public var angView:Number = 0;
 		public var viewOffset:Number = 0;
+		public var itemSwapOffset:Number = 0;
+		public var itemSwapDelta:int = 0;
+		public var swapItemBuffer:Boolean = false;
+		public var flipItemBuffer:Boolean = false;
+		public var timer:FlxTimer;
 		
 		public var inventory:Array = [ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, ONE_DOLLAR_BILL, FIVE_DOLLAR_BILL, TEN_DOLLAR_BILL];
 		
 		public var itemFacing:uint = CORRECT;
 		public var currentItem:uint = 0;
 		
-		public function Player(X:Number = 3, Y:Number = 2)
+		public function Player(X:Number = 3.5, Y:Number = 2)
 		{
 			super(X, Y);
 			
@@ -62,6 +67,8 @@ package
 			fov = 66 * (Math.PI / 180);
 			_pos = new FlxPoint();
 			_rayDir = new FlxPoint();
+			timer = new FlxTimer();
+			timer.start(0.001);
 			
 			inventory.sort(randomSort);
 			inventory.unshift(ONE_DOLLAR_BILL);
@@ -132,22 +139,89 @@ package
 			else if (FlxG.keys.justPressed("K")) flipItem();
 		}
 		
+		private function onTimerSwapOut(Timer:FlxTimer):void
+		{
+			timer.stop();
+			timer.start(0.3, 1, onTimerSwapIn);
+			itemSwapDelta = -16;
+		}
+		
+		private function onTimerSwapIn(Timer:FlxTimer):void
+		{
+			timer.stop();
+			timer.start(0.3, 1, onTimerSwapDone);
+			itemSwapDelta = 16;
+			
+			if (swapItemBuffer) 
+			{
+				currentItem += 1;
+				if (currentItem >= inventory.length) 
+				{
+					currentItem = 0;
+				}
+				if (FlxG.random() < 0.5) itemFacing = CORRECT;
+				else itemFacing = UPSIDE_DOWN;
+			}
+			else if (flipItemBuffer)
+			{
+				if (itemFacing == CORRECT) itemFacing = UPSIDE_DOWN;
+				else itemFacing = CORRECT;
+			}
+			swapItemBuffer = flipItemBuffer = false;
+		}
+		
+		private function onTimerSwapDone(Timer:FlxTimer):void
+		{
+			timer.stop();
+			itemSwapDelta = 0;
+			itemSwapOffset = 0;
+		}
+		
 		private function nextItem():void
 		{
-			currentItem += 1;
-			if (currentItem >= inventory.length) 
+			if (flipItemBuffer) return;//if we're flipping the current item, don't skip to the next one
+			if (itemSwapDelta == 0)
 			{
-				inventory.sort(randomSort);
-				currentItem = 0;
+				swapItemBuffer = true;
+				onTimerSwapOut(timer);
 			}
-			if (FlxG.random() < 0.5) itemFacing = CORRECT;
-			else itemFacing = UPSIDE_DOWN;
+			else if (itemSwapDelta > 0 && timer.progress >= 0.3)
+			{
+				swapItemBuffer = true;
+				var _timeLeft:Number = timer.timeLeft;
+				onTimerSwapOut(timer);
+				timer.stop();
+				timer.start(0.3 - _timeLeft, 1, onTimerSwapIn);
+			}
+			else
+			{
+				//nothing changes, still waiting for the next item to come up.
+			}
 		}
 		
 		private function flipItem():void
 		{
-			if (itemFacing == CORRECT) itemFacing = UPSIDE_DOWN;
-			else itemFacing = CORRECT;
+			//if (itemFacing == CORRECT) itemFacing = UPSIDE_DOWN;
+			//else itemFacing = CORRECT;
+			
+			if (swapItemBuffer) return;//if we're swapping the current item, don't bother flipping
+			if (itemSwapDelta == 0)
+			{
+				flipItemBuffer = true;
+				onTimerSwapOut(timer);
+			}
+			else if (itemSwapDelta > 0 && timer.progress >= 0.3)
+			{
+				flipItemBuffer = true;
+				var _timeLeft:Number = timer.timeLeft;
+				onTimerSwapOut(timer);
+				timer.stop();
+				timer.start(0.3 - _timeLeft, 1, onTimerSwapIn);
+			}
+			else
+			{
+				//nothing changes, still waiting for the next item to come up.
+			}
 		}
 		
 		public function useItem():void

@@ -34,6 +34,9 @@ package
 		private var playerPOV:PlayerPOV;
 		private var arcade:Arcade;
 		
+		private var targets:Array = [new FlxPoint()];
+		private var currentTarget:uint = 0;
+		
 		//for drawing triangles
 		private var canvas:Sprite;
 		private var pt0:FlxPoint;
