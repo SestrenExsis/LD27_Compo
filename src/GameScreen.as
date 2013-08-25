@@ -9,14 +9,6 @@ package
 	
 	public class GameScreen extends ScreenState
 	{
-		
-		//Person --> Player and Stranger
-		//Coin --> Quarter and Token
-		//Cabinet --> Arcade Game and Token Machine, should be 7/8 height from the floor to the ceiling
-		//Obstacle --> ???
-		//Carpet = Faster Jump
-		//Tile = Faster Slide
-		
 		private var worldScale:FlxPoint;
 		
 		public static var viewport:FlxSprite;
@@ -33,9 +25,10 @@ package
 		private var player:Player;
 		private var playerPOV:PlayerPOV;
 		private var arcade:Arcade;
+		private var entity:Entity;
+		private var entities:FlxGroup;
 		
-		private var targets:Array = [new FlxPoint()];
-		private var currentTarget:uint = 0;
+		private var currentTarget:uint = 1;
 		
 		//for drawing triangles
 		private var canvas:Sprite;
@@ -108,6 +101,9 @@ package
 			player = new Player();
 			FlxG.camera.follow(player);
 			playerPOV = new PlayerPOV(player);
+			entities = new FlxGroup();
+			entity = new Entity(Entity.OBJECTIVE_MAKE_CHANGE, 4.5, 26);
+			entities.add(entity);
 			
 			arcade = new Arcade(canvas, player);
 			sourceRect = new Rectangle(0, 0, arcade.uvWallWidth, arcade.uvWallHeight);
@@ -119,6 +115,7 @@ package
 			add(viewport);
 			add(arcade);
 			add(player);
+			add(entities);
 			add(playerPOV);
 			
 			zBuffer = new Array(viewport.width);
@@ -130,22 +127,26 @@ package
 			super.update();
 			
 			FlxG.overlap(player, arcade, collideWithMap);
+			FlxG.overlap(player, entities, collideWithEntity);
 			
 			viewport.fill(0xff000000);
-			//viewport.pixels.fillRect(ceilingRect, 0xff000000);
-			//viewport.pixels.fillRect(floorRect, 0xff000000);
 			if (FlxG.keys.justPressed("T")) showTriangleEdges = !showTriangleEdges;
 			
 			drawViewWithFaces();
+			renderEntities();
 		}
 		
 		private function collideWithMap(Object1:FlxObject, Object2:FlxObject):void
 		{
-			if (FlxObject.separate(Object1, Object2))
-			{
-				var _tile:uint = arcade.getTile(int((player.pos.x + 64 * player.dir.x) / arcade.texFloorWidth), int((player.pos.y + 64 * player.dir.y) / arcade.texFloorHeight));
-				if (_tile > 28) player.useItem();
-			}
+			FlxObject.separate(Object1, Object2);
+		}
+		
+		private function collideWithEntity(Object1:FlxObject, Object2:FlxObject):void
+		{
+			//var _tile:uint = arcade.getTile(int((player.pos.x + 64 * player.dir.x) / arcade.texFloorWidth), int((player.pos.y + 64 * player.dir.y) / arcade.texFloorHeight));
+			//if (_tile > 28) player.useItem();
+			if (Object1 is Player) player.useItem(Object2 as Entity);
+			else player.useItem(Object1 as Entity);
 		}
 		
 		private function drawViewWithFaces():void
@@ -423,7 +424,7 @@ package
 			else
 			{
 				var _light:int = Arcade.LIGHT_LEVELS - arcade.lightmap[int(StartTileX) + int(StartTileY) * arcade.widthInTiles];
-				if (_tileDistance >= 8) _light += int(0.25 * (_tileDistance - 4));
+				if (_tileDistance >= 10) _light += int(1 * (_tileDistance - 9));
 				if (_light >= Arcade.LIGHT_LEVELS) return;//_light = 5;
 				var _startTexX:Number = arcade.uvFloorWidth * (StartTileX - int(StartTileX));
 				var _startTexY:Number = arcade.uvFloorHeight * (StartTileY - int(StartTileY));
@@ -464,7 +465,7 @@ package
 			else if (Face == Arcade.EAST) _light = Arcade.LIGHT_LEVELS - arcade.lightmap[_index + 1];
 			else if (Face == Arcade.NORTH) _light = Arcade.LIGHT_LEVELS - arcade.lightmap[_index - arcade.widthInTiles];
 			else if (Face == Arcade.SOUTH) _light = Arcade.LIGHT_LEVELS - arcade.lightmap[_index + arcade.widthInTiles];
-			if (_tileDistance >= 8) _light += int(0.25 * (_tileDistance - 4));
+			if (_tileDistance >= 10) _light += int(1 * (_tileDistance - 9));
 			if (_light >= Arcade.LIGHT_LEVELS) return;
 			
 			var _tileIndex:uint = arcade.getTile(TileX, TileY) - 1;
@@ -627,6 +628,78 @@ package
 			drawPlaneToCanvas(pt0, pt1, pt2, pt3, sourceRect, arcade.wallTextures.pixels);
 		}
 		
+		public function renderEntities():void
+		{
+			var _clipLeft:uint;
+			var _clipWidth:uint;
+			var _leftEdge:int;
+			var _rightEdge:int;
+			var _width:int;
+			var _posX:uint;
+			var _posY:uint;
+			
+			for (var i:uint = 0; i < entities.length; i++)
+			{
+				entity = entities.members[i];
+				if (entity.exists)
+				{
+					entity.distance = projectPointToScreen(entity.x, entity.y, 0.5 * arcade.texFloorHeight, entity.viewPos, entity);
+					if (entity.ID == currentTarget) 
+					{
+						entity.visible = true;
+						entity.angleToPlayer = Math.abs(FlxU.getAngle(entity.pos, player.pos) - player.viewAngle + 360) % 360;
+						entity.distanceToPlayer = FlxU.getDistance(entity.pos, player.pos);
+					}
+					else entity.visible = false;
+					if (entity.distance > 0 && entity.doClipping) 
+					{
+						_width = entity.frameWidth * entity.scale.x;
+						
+						_leftEdge = int(entity.viewPos.x - 0.5 * _width);
+						if (_leftEdge < 0) _leftEdge = 0;
+						_clipLeft = _leftEdge;
+						_rightEdge = int(entity.viewPos.x + 0.5 * _width);
+						if (_rightEdge >= viewport.width) _rightEdge = viewport.width - 1;
+						while ((_clipLeft < _rightEdge) && (_clipLeft + _leftEdge < zBuffer.length) 
+							&& (zBuffer[_clipLeft] < entity.distance)) _clipLeft += 1;
+						
+						entity.clipRect.x = _clipLeft;
+						_clipWidth = _rightEdge - _clipLeft;
+						if (_clipWidth > viewport.width - _clipLeft) _clipWidth = viewport.width - _clipLeft;
+						while ((_clipWidth > 0) && (_clipLeft + _clipWidth < zBuffer.length) 
+							&& (zBuffer[_clipLeft + _clipWidth] < entity.distance)) _clipWidth -= 1;
+						
+						if (_clipWidth > 0)
+						{
+							entity.clipRect.width = _clipWidth + 1;
+							entity.clipRect.x -= 1;
+							entity.clipRect.height = viewport.height;
+							
+							_posX = int(entity.pos.x / arcade.texFloorWidth);
+							_posY = int(entity.pos.y / arcade.texFloorHeight);
+							entity.light(arcade.lightmap[_posX + _posY * arcade.widthInTiles] + 1);
+						}
+						else entity.distance = -1;
+					}
+					/*else if (entity.bobStyle == Entity.LEFT_AND_RIGHT)
+					{
+						entity.scale.x = entity.scale.y = 1;
+						if (entity.angleToPlayer >= 90 && entity.angleToPlayer <= 270)
+						{
+							entity.viewPos.x = FlxG.width - 0.5 * entity.frameWidth;
+							entity.play("right_arrow");
+						}
+						else
+						{
+							entity.viewPos.x = 0.5 * entity.frameWidth;
+							entity.play("left_arrow");
+						}
+					}*/
+				}
+			}
+			entities.sort("distance", DESCENDING);
+		}
+		
 		public function drawPlaneToCanvas(Point0:FlxPoint, Point1:FlxPoint, Point2:FlxPoint, Point3:FlxPoint, SourceRect:Rectangle, Bmp:BitmapData):void
 		{
 			//Many thanks to http://zehfernando.com/2010/the-best-drawplane-distortimage-method-ever/ for this!
@@ -700,7 +773,7 @@ package
 		 * 
 		 * @return	The distance in tile units from the player to the point.
 		 */
-		public function projectPointToScreen(SourceX:Number, SourceY:Number, SourceZ:Number, DestinationPoint:FlxPoint):Number
+		public function projectPointToScreen(SourceX:Number, SourceY:Number, SourceZ:Number, DestinationPoint:FlxPoint, GameEntity:Entity = null):Number
 		{
 			var planeX:Number = player.magView * player.view.x;
 			var planeY:Number = player.magView * player.view.y;
@@ -718,13 +791,11 @@ package
 				DestinationPoint.x = int((0.5 * viewport.width) * (1 + worldScale.x * (transformX / transformY)));
 				
 				//if we're projecting a singular point that is representing a game sprite, we need to adjust its scale
-				//if (GameEntity) GameEntity.scale.x = GameEntity.scale.y = Math.abs(_height);
+				if (GameEntity) GameEntity.scale.x = GameEntity.scale.y = Math.abs(_height);
 				
 				DestinationPoint.y = 0.5 * viewport.height;
 				DestinationPoint.y -= (SourceZ / arcade.texFloorHeight - 0.5) * arcade.texFloorHeight * _height;
 				
-				//if (SourceZ == 0) DestinationPoint.y += 0.5 * map.texHeight * _height;
-				//else if (SourceZ == map.texHeight) DestinationPoint.y -= 0.5 * map.texHeight * _height;
 				return transformY / arcade.texFloorHeight;
 			}
 			else 

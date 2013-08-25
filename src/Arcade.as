@@ -37,8 +37,8 @@ package
 		public var uvWallWidth:Number;
 		public var uvWallHeight:Number;
 		
-		public var mapWidth:uint = 16;
-		public var mapHeight:uint = 16;
+		//public var mapWidth:uint = 16;
+		//public var mapHeight:uint = 16;
 		
 		public var vismap:Dictionary;
 		public var orderTree:Dictionary;

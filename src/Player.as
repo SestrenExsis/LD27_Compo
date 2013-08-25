@@ -48,6 +48,9 @@ package
 		public var itemFacing:uint = CORRECT;
 		public var currentItem:uint = 0;
 		
+		//public var itemLocations:Array = [];
+		//public var 
+		
 		public function Player(X:Number = 3.5, Y:Number = 2)
 		{
 			super(X, Y);
@@ -88,7 +91,7 @@ package
 		override public function update():void
 		{
 			super.update();
-			if (FlxG.keys["SHIFT"]) speedMultiplier = 0.2;
+			if (FlxG.keys["SHIFT"]) speedMultiplier = 1.5;
 			else speedMultiplier = 1;
 			
 			//velocity.x = velocity.y = 0;
@@ -224,15 +227,19 @@ package
 			}
 		}
 		
-		public function useItem():void
+		public function useItem(Ent:Entity):void
 		{
-			if (itemFacing == CORRECT && inventory[currentItem] != TEN_DOLLAR_BILL)
+			if (!timer.finished) return;
+			if (Ent.type == Entity.OBJECTIVE_MAKE_CHANGE)
 			{
-				FlxG.log("CORRECT");
-			}
-			else
-			{
-				FlxG.log("INCORRECT");
+				if (itemFacing == CORRECT && inventory[currentItem] != TEN_DOLLAR_BILL)
+				{
+					FlxG.log("CORRECT");
+				}
+				else
+				{
+					FlxG.log("INCORRECT");
+				}
 			}
 		}
 		

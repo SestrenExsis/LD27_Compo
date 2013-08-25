@@ -6,14 +6,13 @@ package
 	
 	public class PlayerPOV extends FlxSprite
 	{
-		[Embed(source="../assets/images/POVSprites.png")] protected static var imgPOV:Class;
+		[Embed(source="../assets/images/Sprites.png")] protected static var imgPOV:Class;
 		
 		public static const animationNames:Array = ["token", "one_front", "five_front", "ten_front",
 			"quarter", "one_back", "five_back", "ten_back"];
 		
 		public var swayRadius:Number = 64;
 		public var maxSwayAngle:Number = 60;
-		//public var swayTime:Number = 1;
 		public var swayPosition:Number = 0;
 		public var swayAngle:Number = 0;
 		public var swayDelta:Number = 2000;
@@ -61,9 +60,9 @@ package
 			
 			var _speed:Number = Math.sqrt(target.velocity.x * target.velocity.x + target.velocity.y * target.velocity.y) / target.moveSpeed;
 			var _delta:Number = _speed * Math.sqrt((swayDelta) / swayRadius);
-			//var _period:Number = (2 * Math.PI) / Math.sqrt(swayDelta / swayRadius);;
+			var _period:Number = 2 * Math.PI;
 			swayPosition += FlxG.elapsed * _delta;
-			//if (swayPosition > _period) swayPosition -= _period;
+			if (swayPosition > _period) swayPosition -= _period;
 			swayAngle = maxSwayAngle * Math.sin(swayPosition);
 			offset.x = swayRadius * Math.sin(swayAngle * Math.PI / 180);
 			offset.y = swayRadius * Math.cos(swayAngle * Math.PI / 180);
