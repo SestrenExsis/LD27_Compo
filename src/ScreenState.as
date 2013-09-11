@@ -6,6 +6,9 @@ package
 	{
 		[Embed(source="../assets/images/Sprites.png")] protected static var imgSprites:Class;
 
+		public var buttons:Array;
+		public var primaryButton:FlxButton;
+		public var secondaryButton:FlxButton;
 		public var information:FlxText;
 		public var information2:FlxText;
 		public var overlay:FlxSprite;
@@ -63,11 +66,6 @@ package
 			FlxG.switchState(new MenuScreen);
 		}
 		
-		public function goToGame():void
-		{
-			FlxG.switchState(new GameScreen);
-		}
-		
 		public function onButtonGame():void
 		{
 			fadeToGame();
@@ -76,6 +74,26 @@ package
 		public function fadeToGame(Timer:FlxTimer = null):void
 		{
 			FlxG.fade(0xff000000, 0.5, goToGame);
+		}
+		
+		public function goToGame():void
+		{
+			FlxG.switchState(new GameScreen);
+		}
+		
+		public function onButtonSettings():void
+		{
+			fadeToSettings();
+		}
+		
+		public function fadeToSettings(Timer:FlxTimer = null):void
+		{
+			FlxG.fade(0xff000000, 0.5, goToSettings);
+		}
+		
+		public function goToSettings():void
+		{
+			FlxG.switchState(new SettingsScreen);
 		}
 		
 		public static function playRandomSound(Sounds:Array, Volume:Number = 1.0):void

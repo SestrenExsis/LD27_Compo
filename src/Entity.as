@@ -170,33 +170,23 @@ package
 					play("down_arrow");
 				}
 				
-				var _delta:Number = 60 * 180;
+				//var _delta:Number = 60 * 180;
 				var _period:Number = 360;
-				bobPosition += FlxG.elapsed * _delta;
+				bobPosition += 8;//FlxG.elapsed * _delta;
 				if (bobPosition > _period) bobPosition -= _period;
 				if (bobStyle == UP_AND_DOWN)
 				{
 					offset.x = 0;
-					offset.y = bobAmount * Math.cos(bobPosition * Math.PI / 180) * scale.y;
+					offset.y = bobAmount * Math.cos((bobPosition * Math.PI) / 180) * scale.y;
 				}
 				else
 				{
-					offset.x = bobAmount * Math.sin(bobPosition * Math.PI / 180) * scale.x;
+					offset.x = bobAmount * Math.sin((bobPosition * Math.PI) / 180) * scale.x;
 					offset.y = 0;
 				}
-				var _redStart:uint = (startingColor & 0xff0000) >> 16;
-				var _greenStart:uint = (startingColor & 0x00ff00) >> 8;
-				var _blueStart:uint = (startingColor & 0x0000ff);
-				var _redEnd:uint = (endingColor & 0xff0000) >> 16;
-				var _greenEnd:uint = (endingColor & 0x00ff00) >> 8;
-				var _blueEnd:uint = (endingColor & 0x0000ff);
 				
 				var _progress:Number = Math.abs(bobPosition - 180) / 180;
-				
-				_redEnd = _progress * _redStart + (1 - _progress) * _redEnd;
-				_greenEnd = _progress * _greenStart + (1 - _progress) * _greenEnd;
-				_blueEnd = _progress * _blueStart + (1 - _progress) * _blueEnd;
-				color = (_redEnd << 16) + (_greenEnd << 8) + _blueEnd;
+				color = interpolateColor(startingColor, endingColor, _progress);
 			}
 			else
 			{
@@ -217,18 +207,12 @@ package
 		
 		public function light(LightLevel:uint):void
 		{			
-			var _light:Number = LightLevel;
-			if (_light < 2) _light = 2;
-			else if (_light > 10) _light = 10;
-			_light /= 10;
-			var _red:uint;
-			var _green:uint;
-			var _blue:uint;
-			
-			_red = 255 * _light;
-			_green = 255 * _light;
-			_blue = 255 * _light;
-			color = (_red << 16) + (_green << 8) + _blue;
+			var Light:Number = LightLevel;
+			if (Light < 2) Light = 2;
+			else if (Light > 10) Light = 10;
+			Light /= 10;
+
+			color = interpolateColor(0x000000, 0xffffff, Light);
 		}
 		
 		public function get pos():FlxPoint
@@ -250,11 +234,24 @@ package
 			if (_type >= OBJECTIVE_START_GAME)
 			{	//objective
 				doClipping = false;
-				startingColor = 0xffff00;
-				endingColor = 0xff0000;
+				startingColor = 0xff0000;
+				endingColor = 0xffff00;
 				color = startingColor;
 				visible = false;
 			}
+		}
+		
+		public static function linearInterpolate(InitialValue:Number, FinalValue:Number, WeightOfFinalValue:Number):Number
+		{
+			return (InitialValue + (FinalValue - InitialValue) * WeightOfFinalValue);
+		}
+		
+		public static function interpolateColor(InitialColor:uint, FinalColor:uint, WeightOfFinalColor:Number):uint
+		{
+			var Red:uint = linearInterpolate(0xff & (InitialColor >> 16) , 0xff & (FinalColor >> 16), WeightOfFinalColor);
+			var Green:uint = linearInterpolate(0xff & (InitialColor >> 8), 0xff & (FinalColor >> 8), WeightOfFinalColor);
+			var Blue:uint = linearInterpolate(0xff & InitialColor, 0xff & FinalColor, WeightOfFinalColor);
+			return ((Red << 16) | (Green << 8) | Blue);
 		}
 	}
 }

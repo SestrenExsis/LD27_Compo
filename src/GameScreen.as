@@ -29,7 +29,7 @@ package
 		private var objectives:FlxGroup;
 		//private var entities:FlxGroup;
 		
-		private var orderOfObjectives:Array = [0, 1, 2, 0, 1, 2, 3, 4, 5, 6, 7, 5, 6, 7, 8, 6, 7, 8];
+		private var orderOfObjectives:Array = [0, 1, 2, 0, 1, 2, 0, 1, 5, 6, 7, 5, 6, 7, 8, 6, 7, 8];
 		
 		//for drawing triangles
 		private var canvas:Sprite;
@@ -210,6 +210,7 @@ package
 			information2.text = "Refresh the page to try again.";
 			player.currentObjective = 0;
 			player.playingGame = true;
+			player.velocity.x = player.velocity.y = player.angularVelocity = 0;
 			timer.stop();
 		}
 		

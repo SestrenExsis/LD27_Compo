@@ -16,11 +16,18 @@ package
 		public static const FIVE_DOLLAR_BILL:uint = 2;
 		public static const TEN_DOLLAR_BILL:uint = 3;
 		
-		private static var kUp:String = "W";
-		private static var kDown:String = "S";
-		private static var kLeft:String = "A";
-		private static var kRight:String = "D";
-		private static var kJump:String = "SPACE";
+		public static const FORWARD:uint = 0;
+		public static const BACKWARD:uint = 1;
+		public static const LOOK_LEFT:uint = 2;
+		public static const LOOK_RIGHT:uint = 3;
+		public static const STRAFE_LEFT:uint = 4;
+		public static const STRAFE_RIGHT:uint = 5;
+		public static const SWAP_BILL:uint = 6;
+		public static const FLIP_BILL:uint = 7;
+		public static const RUN:uint = 8;
+		
+		public static var actions:Array = ["Forward","Backward","Look Left","Look Right","Strafe Left","Strafe Right","Swap Bill","Flip Bill","Run"];
+		public static var keymap:Array = ["W","S","A","D","Q","E","J","K","SHIFT"];
 		
 		protected var _dir:FlxPoint; // initial direction vector
 		protected var _view:FlxPoint; //the 2d raycaster version of camera plane
@@ -103,28 +110,28 @@ package
 			
 			if (playingGame) return;
 			
-			if (FlxG.keys["SHIFT"]) speedMultiplier = 1.5;
+			if (FlxG.keys[keymap[RUN]]) speedMultiplier = 1.5;
 			else speedMultiplier = 1;
 			
 			//velocity.x = velocity.y = 0;
 			
-			if (FlxG.keys["W"])
+			if (FlxG.keys[keymap[FORWARD]])
 			{ //move forward
 				velocity.x = dir.x * moveSpeed * speedMultiplier;
 				velocity.y = dir.y * moveSpeed * speedMultiplier;
 			}
-			else if (FlxG.keys["S"])
+			else if (FlxG.keys[keymap[BACKWARD]])
 			{ //move backwards
 				velocity.x = dir.x * -moveSpeed * speedMultiplier;
 				velocity.y = dir.y * -moveSpeed * speedMultiplier;
 			}
 			
-			if (FlxG.keys["Q"])
+			if (FlxG.keys[keymap[STRAFE_LEFT]])
 			{ //strafe left
 				velocity.x += view.x * -moveSpeed * speedMultiplier;
 				velocity.y += view.y * -moveSpeed * speedMultiplier;
 			}
-			else if (FlxG.keys["E"])
+			else if (FlxG.keys[keymap[STRAFE_RIGHT]])
 			{ //strafe right
 				velocity.x += view.x * moveSpeed * speedMultiplier;
 				velocity.y += view.y * moveSpeed * speedMultiplier;
@@ -139,18 +146,18 @@ package
 			
 			if (angle < 0) angle += 360;
 			
-			if (FlxG.keys["A"]) //rotate to the right
+			if (FlxG.keys[keymap[LOOK_LEFT]]) //rotate to the right
 			{ //both camera direction and camera plane must be rotated
 				angularVelocity = rotSpeed * speedMultiplier * (180 / Math.PI);
 			}
-			else if (FlxG.keys["D"]) //rotate to the left
+			else if (FlxG.keys[keymap[LOOK_RIGHT]]) //rotate to the left
 			{ //both camera direction and camera plane must be rotated
 				angularVelocity = -rotSpeed * speedMultiplier * (180 / Math.PI);
 			}
 			else angularVelocity = 0;
 			
-			if (FlxG.keys.justPressed("J")) nextItem();
-			else if (FlxG.keys.justPressed("K")) flipItem();
+			if (FlxG.keys.justPressed(keymap[SWAP_BILL])) nextItem();
+			else if (FlxG.keys.justPressed(keymap[FLIP_BILL])) flipItem();
 		}
 		
 		private function onTimerSwapOut(Timer:FlxTimer):void
