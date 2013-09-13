@@ -216,7 +216,7 @@ package
 		private function onTimerGameOver(Timer:FlxTimer):void
 		{
 			//information.text = "Refresh the page to try again.";
-			information2.text = "Refresh the page to try again.";
+			information2.text = "You didn't make it in time.";
 			player.currentObjective = 0;
 			player.playingGame = true;
 			player.velocity.x = player.velocity.y = player.angularVelocity = 0;
