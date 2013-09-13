@@ -11,7 +11,7 @@ package
 	{
 		private var worldScale:FlxPoint;
 		
-		public static var viewport:FlxSprite;
+		public var viewport:FlxSprite;
 		
 		private var sourceRect:Rectangle;
 		private var floorSourceRect:Rectangle;
@@ -154,11 +154,13 @@ package
 			maxRenderDistance = 30;
 			
 			FlxG.watch(player, "currentObjective");
+			FlxG.watch(objectives.members[0], "visible");
 		}
 		
-		/*override public function destroy():void
+		override public function destroy():void
 		{
-			super.destroy();
+			worldScale = null;
+			viewport = null;
 			canvas = null;
 			pt0 = null;
 			pt1 = null;
@@ -173,6 +175,8 @@ package
 			_pt = null;
 			_intersect = null;
 			
+			FlxG.camera.follow(null);
+			FlxG.unwatch(player, "currentObjective");
 			player = null;
 			playerPOV = null;
 			
@@ -180,28 +184,33 @@ package
 			//the first game
 			
 			arcade = null;
-			sourceRect =  null;
-			floorSourceRect =  null;
-			destRect =  null;
-			ceilingRect =  null;
-			floorRect =  null;
-		}*/
+			sourceRect = null;
+			floorSourceRect = null;
+			destRect = null;
+			ceilingRect = null;
+			floorRect = null;
+			overlay = null;
+			information = null;
+			information = null;
+			
+			super.destroy();
+		}
 		
 		override public function update():void
 		{	
 			super.update();
-			
+
 			FlxG.overlap(player, arcade, collideWithMap);
 			FlxG.overlap(player, objectives, collideWithObjective);
 			
 			viewport.fill(0xff000000);
-			//if (FlxG.keys.justPressed("T")) showTriangleEdges = !showTriangleEdges;
 			
 			drawViewWithFaces();
 			//renderEntities();
 			renderObjectives();
 			
 			information.text = player.info;
+			//if (FlxG.keys.justPressed("T")) showTriangleEdges = !showTriangleEdges;
 		}
 		
 		private function onTimerGameOver(Timer:FlxTimer):void
@@ -212,6 +221,13 @@ package
 			player.playingGame = true;
 			player.velocity.x = player.velocity.y = player.angularVelocity = 0;
 			timer.stop();
+			timer.start(3, 1, onTimerRestart);
+		}
+		
+		private function onTimerRestart(Timer:FlxTimer):void
+		{
+			Entity.currentID = 0;
+			onButtonMenu();
 		}
 		
 		private function collideWithMap(Object1:FlxObject, Object2:FlxObject):void
